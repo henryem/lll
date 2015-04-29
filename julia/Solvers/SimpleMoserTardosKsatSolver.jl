@@ -16,7 +16,7 @@ function solve(this:: SimpleMoserTardosKsatSolver, problem:: KsatProblem)
   # See Moser and Tardos 2010, algorithm 1.1.
   const n = problem.numVariables
   const maxNumIterations = 1000 #FIXME
-  println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(length(problem.clauses)) clauses.")
+  println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses.")
   println("Problem: $(string(problem))")
   assignment = uniformRandomAssignment(n)
   annotatedProblem = annotateKsatProblem(problem, assignment)

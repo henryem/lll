@@ -1,4 +1,4 @@
-export KsatProblem, SatClause, KsatSolution, isSuccessful, unsuccessfulKsatSolution, KsatAssignment, isSatisfied, checkSuccess, uniformRandomAssignment
+export KsatProblem, numClauses, SatClause, KsatSolution, isSuccessful, unsuccessfulKsatSolution, KsatAssignment, isSatisfied, checkSuccess, uniformRandomAssignment
 
 # A disjunction of variables.
 immutable SatClause
@@ -26,10 +26,13 @@ end
 const MAX_DISPLAYED_LITERALS = 200
 function Base.string(this:: KsatProblem)
   const maxDisplayedClauses = int(MAX_DISPLAYED_LITERALS / this.k)
-  const numClauses = length(this.clauses)
-  const numDisplayedClauses = min(maxDisplayedClauses, numClauses)
-  const clausesString = join(map(c -> "($(string(c)))", this.clauses[1:min(length(this.clauses), numDisplayedClauses)]), "&")
-  "$(this.k)-SAT problem $(clausesString)$(numDisplayedClauses < numClauses ? "..." : "")"
+  const numDisplayedClauses = min(maxDisplayedClauses, numClauses(this))
+  const clausesString = join(map(c -> "($(string(c)))", this.clauses[1:numDisplayedClauses]), "&")
+  "$(this.k)-SAT problem $(clausesString)$(numDisplayedClauses < numClauses(this) ? "..." : "")"
+end
+
+function numClauses(this:: KsatProblem)
+  length(this.clauses)
 end
 
 

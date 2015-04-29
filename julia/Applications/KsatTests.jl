@@ -1,5 +1,5 @@
 using ArgParse
-using GeneratedData, Problems, Solvers
+using Utils, GeneratedData, Problems, Solvers
 
 function compareGroundTruth(problem:: KsatProblem)
   println("Using exhaustive search to find a solution.")
@@ -11,10 +11,6 @@ function compareGroundTruth(problem:: KsatProblem)
   else
     println("The problem has no solution.")
   end
-end
-
-function parseJuliaArg(solverText:: String)
-  eval(parse(solverText))
 end
 
 function parseArgs()
@@ -29,7 +25,7 @@ function parseArgs()
       help = "whether to solve exhaustively to compare with ground truth"
       action = :store_true
     "--seed", "-e"
-      help = "the random seed"
+      help = "the random seed" #FIXME
       arg_type = Int
   end
 
@@ -37,9 +33,10 @@ function parseArgs()
 end
 
 function run()
-  args = parseArgs()
-  const problemGenerator = parseJuliaArg(args["data-generator"])
-  const solver = parseJuliaArg(args["solver"])
+  # @foo()
+  const args = parseArgs()
+  const problemGenerator = eval(parse(args["data-generator"]))
+  const solver = eval(parse(args["solver"]))
   const problem = generate(problemGenerator)
   if args["compare-ground-truth"]
     compareGroundTruth(problem)

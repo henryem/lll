@@ -18,7 +18,7 @@ function solve(this:: RandomWalkKsatSolver, problem:: KsatProblem)
   const numAssignmentsPerAttempt = 3*n
   const expectedNumStepsRequired = n^1.5 * (4.0/3.0)^n
   const numAttempts = int(ceil(2*(-1)*log2(this.failureProbability)*expectedNumStepsRequired))
-  println("Making $(numAttempts) attempts for $(problem.k)-SAT problem with $(n) variables and $(length(problem.clauses)) clauses, with $(numAssignmentsPerAttempt) assignments per attempt.")
+  println("Making $(numAttempts) attempts for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses, with $(numAssignmentsPerAttempt) assignments per attempt.")
   println("Problem: $(string(problem))")
   findSolution(numAttempts, problem)
 end
@@ -57,7 +57,7 @@ function solve(this:: SimpleRandomKsatSolver, problem:: KsatProblem)
     clause = problem.clauses[clauseIdx]
     variableInClauseIdx = rand(1:problem.k)
     variable = clause.variables[variableInClauseIdx]
-    # println("Flipping variable $(variable) ($(variableInClauseIdx) in clause $(clauseIdx)/$(length(problem.clauses)) $(clause))")
+    # println("Flipping variable $(variable) ($(variableInClauseIdx) in clause $(clauseIdx)/$(numClauses(problem)) $(clause))")
     currentValue = annotatedProblem.currentAssignment[variable]
     updateAssignment!(annotatedProblem, variable, currentValue, !currentValue)
   end
