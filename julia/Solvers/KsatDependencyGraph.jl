@@ -16,6 +16,10 @@ function neighbors(this:: DependencyGraph, node:: Int64)
   raiseAbstract("neighbors", this)
 end
 
+function neighborhood(this:: DependencyGraph, nodes:: Set{Int64})
+  union(map(node -> neighbors(this, node), nodes)...)
+end
+
 # True if there is an edge between @a and @b.
 function hasEdge(this:: DependencyGraph, a:: Int64, b:: Int64)
   (a, b) in edges(this)
@@ -85,7 +89,7 @@ function inducedSubgraph(this:: KsatDependencyGraph, nodeSubset:: Set{Int64})
 end
 
 function makeKsatDependencyGraph(problem:: KsatProblem)
-  nodes = Set(1:problem.numVariables)
+  nodes = Set(1:numClauses(problem))
   edges = Set{(Int64, Int64)}()
   neighbors = Dict{Int64, Set{Int64}}()
   maxDegree = 0

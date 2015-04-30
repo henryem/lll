@@ -1,8 +1,25 @@
-export ParallelLllKsatSolver, solve, IndependentSetFinder, MoserTardosIndependentSetFinder, SimpleChungIndependentSetFinder
+export ParallelLllKsatSolver, solve
+
+export IndependentSetFinder, MoserTardosIndependentSetFinder, SimpleChungIndependentSetFinder, WeakMisFinder, buildFinderFunc, calculateNumIterations
 
 using Problems
 
+using Distributions
+
+
 abstract IndependentSetFinder
+
+# Return a function from a subgraph of @problemGraph to an independent set in
+# that subgraph.
+function buildFinderFunc(this:: IndependentSetFinder, problemGraph:: DependencyGraph)
+  raiseAbstract("buildFinderFunc", this)
+end
+
+# Compute the number of iterations required by ParallelLllKsatSolver when
+# using this method to find independent sets.
+function calculateNumIterations(this:: IndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph)
+  raiseAbstract("calculateNumIterations", this)
+end
 
 
 # This is a _sequential_ implementation of a parallel algorithm.
@@ -11,27 +28,21 @@ abstract IndependentSetFinder
 # make algorithms run in parallel.
 
 immutable ParallelLllKsatSolver <: Solver{KsatProblem}
-  # An upper bound on the probability that we fail to find a satisfying
-  # solution given that one exists.  This, along with the problem size,
-  # determines the maximum number of iterations taken to find a solution.
-  # When no satisfying solution exists,
-  # the solver will always take that many iterations, since this solver
-  # produces no certificate of failure.
-  failureProbability:: Float64
   #NOTE: Needs to be parallelized if the rest of the algorithm is to be
   # parallelized.
   independentSetFinder:: IndependentSetFinder
 end
 
 function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
-  # See Moser and Tardos 2010, algorithm 1.1.
+  # See Moser and Tardos 2010, algorithms 1 and 2.
   const n = problem.numVariables
   println("Problem: $(string(problem))")
   assignment = uniformRandomAssignment(n)
   annotatedProblem = annotateKsatProblem(problem, assignment)
   #NOTE: Could be parallelized.
   const graph = makeKsatDependencyGraph(problem)
-  const maxNumIterations = calculateNumIterations(this.independentSetFinder, problem, graph, this.failureProbability)
+  const maxNumIterations = calculateNumIterations(this.independentSetFinder, problem, graph)
+  const independentSetFunc = buildFinderFunc(this.independentSetFinder, graph)
   println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses.")
   for i = 1:maxNumIterations
     #NOTE: Could be parallelized.
@@ -40,9 +51,7 @@ function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
       println("Found successful solution after $(i) iterations.")
       return toSuccessfulSolution(annotatedProblem)
     end
-    const independentSet = find(this.independentSetFinder, inducedSubgraph(graph, unsat))
-    #FIXME
-    println("Found an independent set of size $(length(independentSet))")
+    const independentSet = independentSetFunc(inducedSubgraph(graph, unsat))
     #NOTE: Could be parallelized.  For example, if clauses were distributed
     # across machines and separate variable states maintained per machine, each
     # time a clause i's variables are updated, the updates should be
@@ -60,48 +69,120 @@ function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
 end
 
 
-function find(this:: IndependentSetFinder, graph:: DependencyGraph)
-  raiseAbstract("find", this)
-end
-
-# Compute the number of iterations required by ParallelLllKsatSolver when
-# using this method to find independent sets.
-function calculateNumIterations(this:: IndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph, failureProbability:: Float64)
-  raiseAbstract("calculateNumIterations", this)
-end
-
-
-# Use the Moser-Tardos algorithm, which finds a maximal independent set.
+# Use the Moser-Tardos algorithm, which finds a maximal independent set.  This
+# algorithm is guaranteed to find a solution with high probability (for
+# reasonable iteration counts) when e p (d+1) < 1.
 immutable MoserTardosIndependentSetFinder <: IndependentSetFinder end
 
-function find(this:: MoserTardosIndependentSetFinder, graph:: DependencyGraph)
-  maximalIndependentSet(graph)
+function buildFinderFunc(this:: MoserTardosIndependentSetFinder, graph:: DependencyGraph)
+  return subgraph -> maximalIndependentSet(subgraph)
 end
 
-function calculateNumIterations(this:: MoserTardosIndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph, failureProbability:: Float64)
+function calculateNumIterations(this:: MoserTardosIndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph)
   n = length(nodes(graph))
   d = maxDegree(graph)
   p = 2.0^(-1.0*problem.k)
   base = 1.0/(e*p*(d+1))
-  #FIXME: Should involve failureProbability in some way, perhaps as log(1/failureProbability)^a for some a?
+  #HACK
   max(100, int(ceil(log(base, n))))
 end
 
 
-# Use algorithm 1.2 in Chung et al's paper, which just finds an independent set
-# by running one iteration of Luby's algorithm.  In principle, this algorithm
-# requires e p (d+1)^2 < 1 to run in polynomial time.
+# Use algorithm 2 in Chung et al's paper, which just finds an independent set
+# by running one iteration of Luby's algorithm, using the same random node
+# markers for every iteration.  In principle, this algorithm
+# is only proven to find a solution with high probability (for reasonable
+# iteration counts) when e p (d+1)^2 < 1, which is stricter than the 
+# Moser-Tardos algorithm.  In practice it may be faster than the Moser-Tardos
+# algorithm, since it is probably wasteful to perform many rounds of 
+# communication to find larger independent sets.
 immutable SimpleChungIndependentSetFinder <: IndependentSetFinder end
 
-function find(this:: SimpleChungIndependentSetFinder, graph:: DependencyGraph)
-  lubyIndependentSet(graph)
+function buildFinderFunc(this:: SimpleChungIndependentSetFinder, graph:: DependencyGraph)
+  const markings = markNodesRandomly(graph)
+  return subgraph -> findLocalMinima(subgraph, markings)
 end
 
-function calculateNumIterations(this:: SimpleChungIndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph, failureProbability:: Float64)
+function calculateNumIterations(this:: SimpleChungIndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph)
   n = length(nodes(graph))
   d = maxDegree(graph)
   p = 2.0^(-1.0*problem.k)
   base = 1.0/(e*p*(d+1))
-  #FIXME: Should involve failureProbability in some way, perhaps as log(1/failureProbability)^a for some a?
+  #HACK
   max(100, int(ceil(log(base, n))))
+end
+
+
+# The independent set algorithm by Chung et al (algorithm 3).  In theory,
+# this takes only polylog(d) iterations to find a good-enough independent set,
+# while algorithms that actually find maximal independent sets must take a
+# number of iterations that depends (perhaps weakly) on the graph size n.
+immutable WeakMisFinder <: IndependentSetFinder end
+
+function buildFinderFunc(this:: WeakMisFinder, graph:: DependencyGraph)
+  const d = maxDegree(graph)
+  
+  function findIndependentSet(subgraph:: DependencyGraph)
+    const maxNumIterations = 4*e^2*log(2*e*(d+1.0)^4)
+    # This variable is called S in Chung et al.
+    independentSet = Set{Int64}()
+    for epoch = 1:maxNumIterations
+      # We examine the remaining graph after removing everything neighboring a
+      # member of the independent set we are growing.
+      #NOTE: Could be parallelized.
+      candidateNodes = setdiff(nodes(subgraph), neighborhood(subgraph, independentSet))
+      # This variable is called G' in Chung et al.
+      candidateSubgraph = inducedSubgraph(subgraph, candidateNodes)
+      # In each phase, we find high-degree vertices (with the threshold lowered
+      # in each phase); sample some independent elements with a simplified
+      # version of Luby's algorithm, with fewer nodes assigned high rank on
+      # the high-degree phases; and eliminate the vertices we examined, plus the
+      # neighborhood of any vertices we selected for our independent set.
+      # There is one communication step per phase, since each node needs to know 
+      # its neighbors' ranks in the Luby-like step.
+      for phase = 1:int(ceil(log(d)))
+        #NOTE: Could be parallelized.
+        minDegree = d / 2^phase
+        marks = Dict{Int64,Bool}()
+        #NOTE: Could be parallelized.
+        highDegreeNodes = filter(v -> degree(candidateSubgraph, v) >= minDegree, candidateNodes)
+        dist = Bernoulli(1.0/(d*2^(-phase+1.0)+1.0))
+        #NOTE: Could be parallelized.
+        for v in highDegreeNodes
+          marks[v] = rand(dist)
+        end
+        nodesToRemove = Set{Int64}()
+        #NOTE: Could be parallelized.
+        for v in highDegreeNodes
+          if marks[v] && all(neighbor -> !marks[neighbor], neighbors(candidateSubgraph, v))
+            push!(independentSet, v)
+            union!(nodesToRemove, neighbors(candidateSubgraph, v))
+          end
+          push!(nodesToRemove, v)
+        end
+        setdiff!(candidateNodes, nodesToRemove)
+        candidateSubgraph = inducedSubgraph(subgraph, candidateNodes)
+      end
+      # Add in any nodes with degree 0 in the subgraph.  We did not iterate over
+      # such nodes in any phase above; all other nodes have been removed from
+      # candidateNodes.
+      union!(independentSet, candidateNodes)
+    end
+    independentSet
+  end
+  
+  return findIndependentSet
+end
+
+function calculateNumIterations(this:: WeakMisFinder, problem:: KsatProblem, graph:: DependencyGraph)
+  n = length(nodes(graph))
+  d = maxDegree(graph)
+  p = 2.0^(-1.0*problem.k)
+  base = 1.0/(e*p*(d+1))
+  #FIXME: If base < 1, we no longer have the theoretical guarantee that this is
+  # enough iterations, and the formula becomes garbage (it gives us a negative
+  # number.  We still care about solving such problems in practice, so we need
+  # some alternative heuristic for stopping.  For now we just use 1000
+  # iterations, which is totally arbitrary and wrong.
+  max(1000, int(ceil(log(d+1, n))), int(ceil(log(base, n))))
 end

@@ -3,13 +3,6 @@ export SimpleMoserTardosKsatSolver, solve
 using Problems
 
 immutable SimpleMoserTardosKsatSolver <: Solver{KsatProblem}
-  # An upper bound on the probability that we fail to find a satisfying
-  # solution given that one exists.  This, along with the problem size,
-  # determines the maximum number of iterations taken to find a solution.
-  # When no satisfying solution exists,
-  # the solver will always take that many iterations, since this solver
-  # produces no certificate of failure.
-  failureProbability:: Float64
 end
 
 function solve(this:: SimpleMoserTardosKsatSolver, problem:: KsatProblem)

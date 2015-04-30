@@ -20,7 +20,7 @@ function maximalIndependentSet(this:: DependencyGraph)
     const newIndependentNodes = lubyIndependentSet(remainingGraph)
     #NOTE: Could be parallelized.
     union!(independentSet, newIndependentNodes)
-    const coveredNodes = union(map(node -> neighbors(remainingGraph, node), newIndependentNodes)...)
+    const coveredNodes = neighborhood(remainingGraph, newIndependentNodes)
     const remainingNodes = setdiff(nodes(remainingGraph), coveredNodes)
     remainingGraph = inducedSubgraph(remainingGraph, remainingNodes)
   end
