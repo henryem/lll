@@ -1,4 +1,4 @@
-export DependencyGraph, hasEdge, hasNode, degree, neighbors, KsatDependencyGraph, makeKsatDependencyGraph, inducedSubgraph
+export DependencyGraph, nodes, edges, hasEdge, hasNode, degree, neighbors, neighborhood, maxDegree, MarkedGraph, KsatDependencyGraph, makeKsatDependencyGraph, inducedSubgraph
 
 abstract DependencyGraph
 
@@ -17,7 +17,7 @@ function neighbors(this:: DependencyGraph, node:: Int64)
 end
 
 function neighborhood(this:: DependencyGraph, nodes:: Set{Int64})
-  union(map(node -> neighbors(this, node), nodes)...)
+  union(nodes, map(node -> neighbors(this, node), nodes)...)
 end
 
 # True if there is an edge between @a and @b.
@@ -49,6 +49,12 @@ end
 
 function inducedSubgraph(this:: DependencyGraph, nodeSubset:: Set{Int64})
   KsatDependencySubgraph(this, intersect(nodes(this), nodeSubset))
+end
+
+
+immutable MarkedGraph{MarkType}
+  graph:: DependencyGraph
+  marks:: Dict{Int64, MarkType}
 end
 
 
@@ -97,7 +103,7 @@ function makeKsatDependencyGraph(problem:: KsatProblem)
   for (clauseIdx, clause) in enumerate(problem.clauses)
     numEdges = 0
     for (otherClauseIdx, otherClause) in enumerate(problem.clauses)
-      if checkForEdge(clause, otherClause)
+      if clauseIdx != otherClauseIdx && checkForEdge(clause, otherClause)
         push!(edges, (clauseIdx, otherClauseIdx))
         push!(get!(() -> Set{Int64}(), neighbors, clauseIdx), otherClauseIdx)
         numEdges += 1

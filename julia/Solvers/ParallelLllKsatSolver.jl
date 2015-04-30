@@ -52,6 +52,7 @@ function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
       return toSuccessfulSolution(annotatedProblem)
     end
     const independentSet = independentSetFunc(inducedSubgraph(graph, unsat))
+    # println("Using an independent set of size $(length(independentSet)) on iteration $i")
     #NOTE: Could be parallelized.  For example, if clauses were distributed
     # across machines and separate variable states maintained per machine, each
     # time a clause i's variables are updated, the updates should be
@@ -121,9 +122,9 @@ immutable WeakMisFinder <: IndependentSetFinder end
 
 function buildFinderFunc(this:: WeakMisFinder, graph:: DependencyGraph)
   const d = maxDegree(graph)
+  const maxNumIterations = 4*e^2*log(2*e*(d+1.0)^4)
   
   function findIndependentSet(subgraph:: DependencyGraph)
-    const maxNumIterations = 4*e^2*log(2*e*(d+1.0)^4)
     # This variable is called S in Chung et al.
     independentSet = Set{Int64}()
     for epoch = 1:maxNumIterations
@@ -131,6 +132,9 @@ function buildFinderFunc(this:: WeakMisFinder, graph:: DependencyGraph)
       # member of the independent set we are growing.
       #NOTE: Could be parallelized.
       candidateNodes = setdiff(nodes(subgraph), neighborhood(subgraph, independentSet))
+      if isempty(candidateNodes)
+        break
+      end
       # This variable is called G' in Chung et al.
       candidateSubgraph = inducedSubgraph(subgraph, candidateNodes)
       # In each phase, we find high-degree vertices (with the threshold lowered
@@ -143,24 +147,30 @@ function buildFinderFunc(this:: WeakMisFinder, graph:: DependencyGraph)
       for phase = 1:int(ceil(log(d)))
         #NOTE: Could be parallelized.
         minDegree = d / 2^phase
-        marks = Dict{Int64,Bool}()
+        # This variable is called V_i in Chung et al.
+        # In this simplified version of Luby's algorithm, each node is marked
+        # with a 0 or 1, and only nodes that are marked 1 and have no neighbors
+        # marked 1 are chosen.  (So it is Luby's algorithm with the order on
+        # marks switched, the marks limited to {0,1}, and a nonuniform sampling
+        # distribution for the marks.)
+        samplingProbability = 1.0/(d*2^(-phase+1.0)+1.0)
+        dist = Bernoulli(samplingProbability)
+        
         #NOTE: Could be parallelized.
-        highDegreeNodes = filter(v -> degree(candidateSubgraph, v) >= minDegree, candidateNodes)
-        dist = Bernoulli(1.0/(d*2^(-phase+1.0)+1.0))
+        marked = markNodesRandomly(candidateSubgraph, dist)
         #NOTE: Could be parallelized.
-        for v in highDegreeNodes
-          marks[v] = rand(dist)
-        end
-        nodesToRemove = Set{Int64}()
+        localMaxima = findLocalMaxima(marked)
         #NOTE: Could be parallelized.
-        for v in highDegreeNodes
-          if marks[v] && all(neighbor -> !marks[neighbor], neighbors(candidateSubgraph, v))
-            push!(independentSet, v)
-            union!(nodesToRemove, neighbors(candidateSubgraph, v))
-          end
-          push!(nodesToRemove, v)
-        end
-        setdiff!(candidateNodes, nodesToRemove)
+        independentSet = union(independentSet, localMaxima)
+        # We remove all high-degree nodes, and also the inclusive neighborhood
+        # (that is, the nodes and the union of their neighbors) of nodes that 
+        # were added to the independent set on this iteration.
+        #NOTE: Could be parallelized.
+        nodesToRemove = union(
+          neighborhood(candidateSubgraph, localMaxima),
+          filter(v -> degree(candidateSubgraph, v) >= minDegree, candidateNodes))
+        #NOTE: Could be parallelized.
+        candidateNodes = setdiff(candidateNodes, nodesToRemove)
         candidateSubgraph = inducedSubgraph(subgraph, candidateNodes)
       end
       # Add in any nodes with degree 0 in the subgraph.  We did not iterate over

@@ -1,5 +1,7 @@
 export maximalIndependentSet, lubyIndependentSet
 
+using Distributions
+
 # Some algorithms for finding independent sets in undirected graphs.
 # Depends on KsatDependencyGraph.jl.
 # 
@@ -31,32 +33,52 @@ end
 # This merely finds an independent (but not necessarily maximal) set.
 # See, for example, http://courses.csail.mit.edu/6.852/08/papers/Luby.pdf .
 function lubyIndependentSet(this:: DependencyGraph)
-  const ranks = markNodesRandomly(this)
-  findLocalMinima(this, ranks)
+  const marked = markNodesRandomly(this)
+  findLocalMinima(marked)
 end
 
 # Assign a random marker of type NodeMarker to each vertex of @this.
 function markNodesRandomly(this:: DependencyGraph)
+  markNodesRandomly(this, DiscreteUniform(typemin(NodeMarker), typemax(NodeMarker)))
+end
+
+# Assign IID draws from @distribution to each node of @this.
+# @param distribution should be a distribution on elements of type NodeMarker.
+function markNodesRandomly(this:: DependencyGraph, distribution:: Sampleable{Univariate,Discrete})
   #NOTE: Could be parallelized.
   marks = Dict{Int64,NodeMarker}()
   const vs = nodes(this)
-  const randomMarks = rand(NodeMarker, length(vs))
+  const randomMarks = rand(distribution, length(vs))
   for (i, v) in enumerate(vs)
     marks[v] = randomMarks[i]
   end
-  marks
+  MarkedGraph{NodeMarker}(this, marks)
 end
 
-# Find all local minima of @values (which maps nodes to markers) in graph
-# @this.  A local minimum is a node in @this whose neighbors in @this have
-# value greater than or equal to it.
-function findLocalMinima(this:: DependencyGraph, values:: Dict{Int64,NodeMarker})
+# Find all strict local minima of @values (which maps nodes to markers) in graph
+# @this.  A strict local minimum is a node in @this whose neighbors in @this
+# have value greater than it.
+function findLocalMinima(this:: MarkedGraph{NodeMarker})
+  findLocalMinima(this, <)
+end
+
+# Find all strict local minima of @values (which maps nodes to markers) in graph
+# @this.  A strict local minimum is a node in @this whose neighbors in @this
+# have value greater than it according to @lessThanFunc.
+# @param lessThanFunc should be a binary operator like < that induces a
+# total order on nodes.
+function findLocalMinima(this:: MarkedGraph{NodeMarker}, lessThanFunc:: Function)
   localMinima = Set{Int64}()
-  for v in nodes(this)
-    const value = values[v]
+  for v in nodes(this.graph)
+    const mark = this.marks[v]
     foundSmallerNeighbor = false
-    for u in neighbors(this, v)
-      if value > values[u]
+    for u in neighbors(this.graph, v)
+      #TODO: Probably slow; there is a library that uses the type system to
+      # avoid function calls like this for common functions, but I do not 
+      # remember its name.
+      # 
+      # Read this as "If myMark >= neighborMark, I am not a local minimum."
+      if !lessThanFunc(mark, this.marks[u])
         foundSmallerNeighbor = true
         break
       end
@@ -66,4 +88,10 @@ function findLocalMinima(this:: DependencyGraph, values:: Dict{Int64,NodeMarker}
     end
   end
   localMinima
+end
+
+# Find all strict local maxima of @values (which maps nodes to markers) in graph
+# @this.
+function findLocalMaxima(this:: MarkedGraph{NodeMarker})
+  findLocalMinima(this, >)
 end
