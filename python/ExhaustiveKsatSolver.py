@@ -9,7 +9,6 @@ class ExhaustiveKsatSolver():
 	  	numSatisfyingSolutions = 0
 	  	numPotentialSolutions = 2**n
 	  	for binaryAssignment in range(0,numPotentialSolutions):
-	  		print binaryAssignment
 	  		for variableIdx in range(0,n):
 	  			bit = (binaryAssignment >> (variableIdx)) & 0x1
 	  			if bit == 0:
@@ -19,7 +18,6 @@ class ExhaustiveKsatSolver():
 	  		if checkSuccess(assignment, problem):
 	  			if numSatisfyingSolutions == 0:
 	  				satisfyingAssignment.extend(assignment)
-	  				numSatisfyingSolutions += 1
-	       		#print satisfyingAssignment
-	  	# return AnnotatedKsatSolution(satisfyingAssignment, numSatisfyingSolutions > 0, numSatisfyingSolutions, numPotentialSolutions)
+	  			numSatisfyingSolutions += 1
+	  	return {"satisfyingAssignment":satisfyingAssignment, "isSuccessful": numSatisfyingSolutions > 0, "numSatisfyingSolutions":numSatisfyingSolutions, "numPotentialSolutions": numPotentialSolutions}
 

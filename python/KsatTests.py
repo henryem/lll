@@ -5,11 +5,11 @@ from RandomKsat import RandomKsat
 def compareGroundTruth(problem):
 	print "Using exhaustive search to find a solution"
 	trueSolution = ExhaustiveKsatSolver.solve(problem)
+	if trueSolution["isSuccessful"]:
+		print "The problem has a solution: "+str(trueSolution["satisfyingAssignment"])
 
-	# if (isSuccessful(trueSolution)):
-	# 	print "The problem has a solution: "+str(trueSolution)
-	# else:
-	# 	print "The problem has no solution."
+	else:
+		print "The problem has no solution."
  
 def parseArgs():
 	parser = argparse.ArgumentParser()
