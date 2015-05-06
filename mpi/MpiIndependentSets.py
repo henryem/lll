@@ -13,9 +13,11 @@ class LocalSubset(object):
     self.elements = elements
 
 def withRandomIntMarks(graph):
+  #FIXME: Use a seed
   return MarkedMpiGraph(graph, withValues(lambda node: random.randint(0, sys.maxsize, graph)))
 
 def withRandomBoolMarks(graph, p):
+  #FIXME: Use a seed
   return MarkedMpiGraph(graph, withValues(lambda node: Utils.randBernoulli(p), graph))
 
 # @param self: A MarkedMpiGraph.

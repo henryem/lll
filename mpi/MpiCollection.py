@@ -45,6 +45,14 @@ class MpiCollection(object):
   def localElements(self):
     return self.distributedChunks.localChunk
 
+  # Valid only on a collection of pairs with unique keys.  No warning will be
+  # given if the keys are not unique.
+  def toDict(self):
+    return MpiDict(self.distributedChunks.mapChunks(lambda chunk: dict(chunk)))
+
+  def comm(self):
+    return self.distributedChunks.comm
+
 def makeRange(comm, numElements):
   numProcessors = comm.size
   partitioning = Utils.partitionEvenly(numElements, numProcessors)
@@ -55,9 +63,33 @@ def makeRange(comm, numElements):
   partitioner = Partitioner(Utils.makeEvenPartitioner(numElements, numProcessors))
   return MpiCollection(MpiChunks(comm, localElements), partitioner)
 
+def makeEmpty(comm, partitioner):
+  return MpiCollection(MpiChunks(comm, []), partitioner)
+
 class Partitioner(object):
   def __init__(self, partitionFunc):
     self.partitionFunc = partitionFunc
   
   def apply(self, elt):
     self.partitionFunc(elt)
+
+# A partitioner that always returns 0; this is a hack that can be
+# used when manually controlling partitioning.
+class BrokenPartitioner(object):
+  def __init__(self):
+    super(BrokenPartitioner, self).__init__(self, lambda elt: 0)
+
+
+# A distributed dictionary.  Currently only supports local lookups.
+class MpiDict(object):
+  def __init__(self, dictChunks):
+    self.dictChunks = dictChunks
+  
+  def localDict(self):
+    return self.dictChunks.localData()
+  
+  def comm(self):
+    return self.dictChunks.comm
+  
+  def __getitem__(self, item):
+    return self.dictChunks.localData()[item]

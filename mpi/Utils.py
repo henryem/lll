@@ -1,7 +1,7 @@
 import random
 
-def randBernoulli(p):
-  return random.random() < p
+def randBernoulli(rand, p):
+  return rand.uniform() < p
 
 def partitionEvenly(numElts, numPartitions):
   usualNumElts = numElts // numPartitions
