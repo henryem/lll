@@ -26,23 +26,26 @@ def randomSatClause(k, numVariables, rand):
 
 # A distributed k-SAT problem.
 class MpiKsatProblem(object):
-  def __init__(self, k, numVariables, distributedClauses):
+  def __init__(self, k, numVariables, distributedClausesV):
     self.k = k
     self.numVariables = numVariables
-    self.distributedClauses = distributedClauses
+    self.distributedClausesV = distributedClausesV
   
   # def toDependencyGraph(self):
-  #   localNodes = self.distributedClauses.
+  #   localNodes = self.distributedClausesV.
   #FIXME
   
   def comm(self):
     return self.distributedClauses.comm()
   
+  def distributedClauses(self):
+    return self.distributedClausesV
+  
   def localClauses(self):
-    return self.distributedClauses.localDict().values()
+    return self.distributedClausesV.localDict().values()
     
   def localClausesByIdx(self):
-    return self.distributedClauses.localDict()
+    return self.distributedClausesV.localDict()
   
   def __repr__(self):
     return "[%d] %s" % (

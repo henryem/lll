@@ -1,7 +1,14 @@
-import random
+import sys
 
 def randBernoulli(rand, p):
   return rand.uniform() < p
+
+def randBit(rand):
+  return rand.randint(0, 2)
+
+def randLargeInt(rand):
+  #TODO: Not the optimal range to use.
+  return rand.randint(0, sys.maxint)
 
 def partitionEvenly(numElts, numPartitions):
   usualNumElts = numElts // numPartitions

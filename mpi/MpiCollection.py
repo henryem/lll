@@ -31,10 +31,12 @@ class MpiCollection(object):
   # 0.
   def collect(self):
     collectedChunks = self.distributedChunks.collect()
-    if collectedChunks is None:
-      return None
-    else:
-      return itertools.chain.from_iterable(collectedChunks)
+    return onMaster(self.comm(), lambda : itertools.chain.from_iterable(collectedChunks))
+
+  # Should be called on all processors.  Will return the entire collection
+  # everywhere.
+  def collectEverywhere(self):
+    return itertools.chain.from_iterable(self.distributedChunks.collectEverywhere())
 
   def mapChunks(self, f):
     return MpiCollection(self.distributedChunks.mapChunks(f), self.partitioner)
@@ -73,12 +75,6 @@ class Partitioner(object):
   def apply(self, elt):
     self.partitionFunc(elt)
 
-# A partitioner that always returns 0; this is a hack that can be
-# used when manually controlling partitioning.
-class BrokenPartitioner(object):
-  def __init__(self):
-    super(BrokenPartitioner, self).__init__(self, lambda elt: 0)
-
 
 # A distributed dictionary.  Currently only supports local lookups.
 class MpiDict(object):
@@ -91,5 +87,31 @@ class MpiDict(object):
   def comm(self):
     return self.dictChunks.comm
   
+  def collect(self):
+    dicts = self.dictChunks.collect()
+    return onMaster(self.comm(), lambda : addAll_update(dicts))
+  
+  def collectEverywhere(self):
+    dicts = self.dictChunks.collectEverywhere()
+    return addAll_update(dicts)
+  
   def __getitem__(self, item):
     return self.dictChunks.localData()[item]
+
+def dictFromLocal(comm, localDict):
+  return MpiDict(MpiChunks(comm, localDict))
+
+
+# A distributed set.
+class MpiSet(object):
+  def __init__(self, setChunks):
+    self.setChunks = setChunks
+  
+  def localSet(self):
+    return self.setChunks.localData()
+  
+  def comm(self):
+    return self.dictChunks.comm
+
+def setFromLocal(comm, localSet):
+  return MpiSet(MpiChunks(comm, localSet))

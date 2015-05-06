@@ -16,11 +16,11 @@ class KsatAssignment(object):
 
 def uniformRandomKsatAssignment(rand, numVariables):
   #TODO: Inefficient for storing booleans.
-  return KsatAssignment(rand.randint(2, size=numVariables, dtype='bool_'))
+  return KsatAssignment(rand.randint(0, 2, size=numVariables))
 
 def emptyKsatAssignment(numVariables):
   #TODO: Inefficient for storing booleans.
-  return KsatAssignment(np.zeros(numVariables, dtype='bool_'))
+  return KsatAssignment(np.zeros(numVariables))
 
 class MpiKsatAssignment(object):
   def __init__(self, assignmentBroadcast):

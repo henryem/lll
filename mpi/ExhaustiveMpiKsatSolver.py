@@ -18,10 +18,12 @@ def collectAndCombineLocalAssignments(comm, locallySatisfyingAssignments):
     
   return onMaster(comm, findGloballySatisfyingAssignments)
 
-class ExhaustiveMpiKsatSolver(MpiKsatSolver):
+# An exhaustive solver that distributes clauses across machines and
+# parallelizes the work of checking each assignment.
+class ExhaustiveDistMpiKsatSolver(MpiKsatSolver):
   def __init__(self, communicationFrequency):
     self.communicationFrequency = communicationFrequency
-    super(ExhaustiveMpiKsatSolver, self).__init__()
+    super(ExhaustiveDistMpiKsatSolver, self).__init__()
   
   def solve(self, rand, problem):
     n = problem.numVariables
@@ -56,8 +58,39 @@ class ExhaustiveMpiKsatSolver(MpiKsatSolver):
 COMMUNICATION_FREQUENCY_FOR_MULTITHREADED = 2**9
 COMMUNICATION_FREQUENCY_FOR_DISTRIBUTED = 2**14
 
-def multithreadedExhaustiveMpiKsatSolver():
-  return ExhaustiveMpiKsatSolver(COMMUNICATION_FREQUENCY_FOR_MULTITHREADED)
+def multithreadedExhaustiveDistMpiKsatSolver():
+  return ExhaustiveDistMpiKsatSolver(COMMUNICATION_FREQUENCY_FOR_MULTITHREADED)
 
-def distributedExhaustiveMpiKsatSolver():
-  return ExhaustiveMpiKsatSolver(COMMUNICATION_FREQUENCY_FOR_DISTRIBUTED)
+def distributedExhaustiveDistMpiKsatSolver():
+  return ExhaustiveDistMpiKsatSolver(COMMUNICATION_FREQUENCY_FOR_DISTRIBUTED)
+
+
+# An exhaustive solver that broadcasts clauses and partitions the space of
+# assignments across machines.  Does essentially no communication.
+class ExhaustiveDistMpiKsatSolver(MpiKsatSolver):
+  def __init__(self):
+    super(ExhaustiveDistMpiKsatSolver, self).__init__()
+  
+  def solve(self, rand, problem):
+    comm = problem.comm()
+    n = problem.numVariables
+    numPotentialSolutions = 2**n
+    binaryAssignments = MpiCollection.makeRange(comm, numPotentialSolutions)
+    currentAssignment = MpiKsatAssignment.emptyMpiKsatAssignment(problem.comm(), n)
+    currentLocalAssignment = currentAssignment.localAssignment()
+    allClauses = problem.distributedClauses().collectEverywhere()
+    def checkBinaryAssignment(binaryAssignment):
+      unpack(binaryAssignment, currentLocalAssignment, n)
+      return currentLocalAssignment.satisfiesClauses(allClauses)
+    satisfyingBinaryAssignments = binaryAssignments.filter(checkBinaryAssignment)
+    
+    #FIXME
+    
+    def buildSolution():
+      if len(satisfyingAssignments) > 0:
+        print "%d out of %d satisfying assignments." % (len(satisfyingAssignments), numPotentialSolutions)
+        return KsatSolution.success(list(satisfyingAssignments)[0])
+      else:
+        return KsatSolution.failure()
+    
+    return onMaster(problem.comm(), buildSolution)

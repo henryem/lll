@@ -4,6 +4,14 @@ import IndependentSetFinder
 import MpiGraph
 import MpiKsatAssignment
 import KsatSolution
+import Utils
+
+# The set of indices of local clauses in @problem that are unsatisfied under
+# @assignment.
+def localUnsatisfiedClauses(problem, assignment):
+  localClausesByIdx = problem.localClausesByIdx()
+  localAssignment = assignment.localAssignment()
+  return set(clauseIdx for clauseIdx, clause in problem.localClausesByIdx() if localAssignment.satisfiesClause(clause))
 
 # A class of LLL algorithms for solving distributed k-SAT problems.  Solvers
 # are parameterized by a method for finding independent sets in clause
@@ -23,11 +31,12 @@ class LllKsatSolver(MpiKsatSolver):
     for i in xrange(maxNumIterations):
       # At the beginning of each iteration of this loop, @currentAssignment
       # is consistent across processors.
-      #FIXME: Implement.
       unsatisfiedClauses = localUnsatisfiedClauses(problem, currentAssignment)
       if len(unsatisfiedClauses) == 0:
         return onMaster(comm, lambda : KsatSolution.success(currentAssignment.localAssignment()))
+      #FIXME: Implement.
       unsatSubgraph = MpiGraph.inducedSubgraph(unsatisfiedClauses)
+      #FIXME: Implement.
       localIndependentSet = independentSetFunc(unsatSubgraph)
       localClausesByIdx = problem.localClausesByIdx()
       #FIXME: Weird initialization.
@@ -38,9 +47,13 @@ class LllKsatSolver(MpiKsatSolver):
         # For now we assume all machines need to see all modified variables,
         # which is true when m*k/p >> n (i.e. when the number of literals per
         # machine is large).
-        updates = {variable: rand.randint(0, 2) for variable in clause.literals}
+        updates = {variable: Utils.randBit(rand) for variable in clause.literals}
         locallyModifiedVariables.localDict().update(updates)
-      #FIXME: Implement on MpiDict.
+      #TODO: Probably inefficient serialization here.  Should serialize as
+      # a list of ints and a list of bools.
       allModifiedVariables = locallyModifiedVariables.collectEverywhere()
-      #FIXME: Update currentAssignment from dict.
+      # Update modified variables from everywhere.
+      localAssignment = currentAssignment.localAssignment()
+      for var, value in allModifiedVariables:
+        localAssignment[var] = value
     return onMaster(comm, lambda : KsatSolution.failure())

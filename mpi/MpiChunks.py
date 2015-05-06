@@ -22,4 +22,4 @@ class MpiChunks(object):
   # Should be called on all processors.  Will return the entire collection
   # everywhere.
   def collectEverywhere(self):
-    return None #FIXME
+    return self.comm.allgather(self.localChunk)
