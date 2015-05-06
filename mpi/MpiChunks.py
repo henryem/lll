@@ -1,3 +1,5 @@
+from MpiUtils import onMaster
+
 # A very primitive distributed data structure.  Each processor is associated
 # with a local chunk of arbitrary data.
 # Currently none of the operations on this object are lazy, so
@@ -23,3 +25,7 @@ class MpiChunks(object):
   # everywhere.
   def collectEverywhere(self):
     return self.comm.allgather(self.localChunk)
+  
+  def reduce(self, zero, plus):
+    collectedValue = self.collect()
+    return onMaster(self.comm, lambda : reduce(plus, collectedValue, zero))

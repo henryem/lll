@@ -36,7 +36,7 @@ class MpiKsatProblem(object):
   #FIXME
   
   def comm(self):
-    return self.distributedClauses.comm()
+    return self.distributedClausesV.comm()
   
   def distributedClauses(self):
     return self.distributedClausesV

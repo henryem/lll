@@ -37,7 +37,7 @@ def findLocalMaxima(graph, marks, comparatorFunc):
 # maxima according to @comparatorFunc.
 # This subroutine is a little complicated, but it is useful in implementing
 # findLocalMaxima() above.
-def findLocalMaximaAmongNodes(graph, potentialMaxima, marks, comparatorFunc)
+def findLocalMaximaAmongNodes(graph, potentialMaxima, marks, comparatorFunc):
   def isLocalMaximum(node):
     mark = marks[node]
     neighbors = graph.localNeighbors(node)

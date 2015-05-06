@@ -6,10 +6,8 @@ import SetUtils
 # distributed, and each node knows its neighbors, some of which may reside
 # in other processes.
 # 
-# Methods are _local_ unless otherwise specified.  For example, self.nodes()
-# returns a set of nodes that reside on the local processor, not the whole set
-# of nodes.  Global methods are prefixed with "global" and return MpiChunks or
-# MpiCollection where appropriate.
+# Methods return distributed collections unless otherwise specified.  Methods
+# prefixed with "local" return ordinary collections.
 class Graph(object):
   def __init__(self, commV):
     self.commV = commV

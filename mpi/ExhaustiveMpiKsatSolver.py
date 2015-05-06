@@ -1,12 +1,11 @@
+import numpy as np
+
 from MpiKsatSolver import MpiKsatSolver
 from MpiChunks import MpiChunks
+import MpiCollection
 from MpiUtils import onMaster
 import MpiKsatAssignment
 import KsatSolution
-
-def unpack(binaryAssignment, assignment, n):
-  for variableIdx in xrange(n):
-    assignment.values[variableIdx] = (binaryAssignment >> variableIdx) & 0x1
 
 def collectAndCombineLocalAssignments(comm, locallySatisfyingAssignments):
   allLocalAssignments = locallySatisfyingAssignments.collect()
@@ -20,56 +19,68 @@ def collectAndCombineLocalAssignments(comm, locallySatisfyingAssignments):
 
 # An exhaustive solver that distributes clauses across machines and
 # parallelizes the work of checking each assignment.
-class ExhaustiveDistMpiKsatSolver(MpiKsatSolver):
+class ExhaustiveDataParallelSolver(MpiKsatSolver):
   def __init__(self, communicationFrequency):
     self.communicationFrequency = communicationFrequency
-    super(ExhaustiveDistMpiKsatSolver, self).__init__()
+    super(ExhaustiveDataParallelSolver, self).__init__()
   
   def solve(self, rand, problem):
+    comm = problem.comm()
+    
+    allClauses = problem.distributedClauses().values().collectEverywhere()
+    
+    if comm.rank == 0:
+      print list(allClauses)
+    
     n = problem.numVariables
     numPotentialSolutions = 2**n
     locallySatisfyingAssignments = MpiChunks(problem.comm(), [])
     assignment = MpiKsatAssignment.emptyMpiKsatAssignment(problem.comm(), n)
+    localAssignment = assignment.localAssignment()
     assignmentsSinceLastCommunication = 0
-    satisfyingAssignments = None
-    if problem.comm().rank == 0:
+    satisfyingAssignment = None
+    numSatisfyingAssignments = 0
+    if comm.rank == 0:
       satisfyingAssignments = set()
+    #FIXME: Is apparently broken.
     for binaryAssignment in xrange(numPotentialSolutions):
-      unpack(binaryAssignment, assignment.localAssignment(), n)
-      if assignment.localAssignment().satisfiesClauses(problem.localClauses()):
+      MpiKsatAssignment.unpackTo(binaryAssignment, localAssignment, n)
+      if localAssignment.satisfiesClauses(problem.localClauses()):
         locallySatisfyingAssignments.localData().append(binaryAssignment)
       assignmentsSinceLastCommunication += 1
-      if assignmentsSinceLastCommunication >= self.communicationFrequency or binaryAssignment == numPotentialSolutions:
-        newSatisfyingAssignments = collectAndCombineLocalAssignments(problem.comm(), locallySatisfyingAssignments)
-        if problem.comm().rank == 0:
-          satisfyingAssignments |= newSatisfyingAssignments
-        locallySatisfyingAssignments = MpiChunks(problem.comm(), [])
+      if assignmentsSinceLastCommunication >= self.communicationFrequency or binaryAssignment == numPotentialSolutions-1:
+        newSatisfyingAssignments = collectAndCombineLocalAssignments(comm, locallySatisfyingAssignments)
+        if comm.rank == 0:
+          numSatisfyingAssignments += len(newSatisfyingAssignments)
+          if len(newSatisfyingAssignments) > 0 and satisfyingAssignment is None:
+            satisfyingAssignment = MpiKsatAssignment.unpack(list(newSatisfyingAssignments)[0], n)
+        locallySatisfyingAssignments = MpiChunks(comm, [])
         assignmentsSinceLastCommunication = 0
     
     def buildSolution():
-      if len(satisfyingAssignments) > 0:
-        print "%d out of %d satisfying assignments." % (len(satisfyingAssignments), numPotentialSolutions)
-        return KsatSolution.success(list(satisfyingAssignments)[0])
+      print "%d out of %d satisfying assignments." % (numSatisfyingAssignments, numPotentialSolutions)
+      if satisfyingAssignment is not None:
+        return KsatSolution.success(satisfyingAssignment)
       else:
         return KsatSolution.failure()
     
-    return onMaster(problem.comm(), buildSolution)
+    return onMaster(comm, buildSolution)
 
 COMMUNICATION_FREQUENCY_FOR_MULTITHREADED = 2**9
 COMMUNICATION_FREQUENCY_FOR_DISTRIBUTED = 2**14
 
-def multithreadedExhaustiveDistMpiKsatSolver():
-  return ExhaustiveDistMpiKsatSolver(COMMUNICATION_FREQUENCY_FOR_MULTITHREADED)
+def multithreadedExhaustiveDataParallelSolver():
+  return ExhaustiveDataParallelSolver(COMMUNICATION_FREQUENCY_FOR_MULTITHREADED)
 
-def distributedExhaustiveDistMpiKsatSolver():
-  return ExhaustiveDistMpiKsatSolver(COMMUNICATION_FREQUENCY_FOR_DISTRIBUTED)
+def distributedExhaustiveDataParallelSolver():
+  return ExhaustiveDataParallelSolver(COMMUNICATION_FREQUENCY_FOR_DISTRIBUTED)
 
 
 # An exhaustive solver that broadcasts clauses and partitions the space of
 # assignments across machines.  Does essentially no communication.
-class ExhaustiveDistMpiKsatSolver(MpiKsatSolver):
+class ExhaustiveProcessParallelSolver(MpiKsatSolver):
   def __init__(self):
-    super(ExhaustiveDistMpiKsatSolver, self).__init__()
+    super(ExhaustiveProcessParallelSolver, self).__init__()
   
   def solve(self, rand, problem):
     comm = problem.comm()
@@ -78,18 +89,23 @@ class ExhaustiveDistMpiKsatSolver(MpiKsatSolver):
     binaryAssignments = MpiCollection.makeRange(comm, numPotentialSolutions)
     currentAssignment = MpiKsatAssignment.emptyMpiKsatAssignment(problem.comm(), n)
     currentLocalAssignment = currentAssignment.localAssignment()
-    allClauses = problem.distributedClauses().collectEverywhere()
+    #FIXME: collectEverywhere() probably should return a list, not an iterable.
+    allClauses = list(problem.distributedClauses().values().collectEverywhere())
+    
+    if comm.rank == 0:
+      print allClauses
+    
     def checkBinaryAssignment(binaryAssignment):
-      unpack(binaryAssignment, currentLocalAssignment, n)
+      MpiKsatAssignment.unpackTo(binaryAssignment, currentLocalAssignment, n)
       return currentLocalAssignment.satisfiesClauses(allClauses)
     satisfyingBinaryAssignments = binaryAssignments.filter(checkBinaryAssignment)
-    
-    #FIXME
+    numSatisfyingAssignments = satisfyingBinaryAssignments.size()
+    arbitrarySatisfyingAssignment = satisfyingBinaryAssignments.reduce(-1, max)
     
     def buildSolution():
-      if len(satisfyingAssignments) > 0:
-        print "%d out of %d satisfying assignments." % (len(satisfyingAssignments), numPotentialSolutions)
-        return KsatSolution.success(list(satisfyingAssignments)[0])
+      print "%d out of %d satisfying assignments." % (numSatisfyingAssignments, numPotentialSolutions)
+      if arbitrarySatisfyingAssignment > -1:
+        return KsatSolution.success(MpiKsatAssignment.unpack(arbitrarySatisfyingAssignment, n))
       else:
         return KsatSolution.failure()
     

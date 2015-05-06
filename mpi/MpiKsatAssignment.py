@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 import MpiChunks
 import MpiBroadcast
@@ -13,6 +14,22 @@ class KsatAssignment(object):
   
   def satisfiesClause(self, clause):
     return any(self.values[l] == s for l, s in clause.iterator())
+  
+  def pack(self):
+    return sum(2**i if value else 0 for i, value in enumerate(self.values))
+
+  def __repr__(self):
+    return "".join(itertools.imap(str, self.values))
+
+def unpack(binaryAssignment, n):
+  assignment = emptyKsatAssignment(n)
+  unpackTo(binaryAssignment, assignment, n)
+  return assignment
+
+def unpackTo(binaryAssignment, assignment, n):
+  for variableIdx in xrange(n):
+    assignment.values[variableIdx] = (binaryAssignment >> variableIdx) & 0x1
+
 
 def uniformRandomKsatAssignment(rand, numVariables):
   #TODO: Inefficient for storing booleans.
@@ -20,7 +37,7 @@ def uniformRandomKsatAssignment(rand, numVariables):
 
 def emptyKsatAssignment(numVariables):
   #TODO: Inefficient for storing booleans.
-  return KsatAssignment(np.zeros(numVariables))
+  return KsatAssignment(np.zeros(numVariables, dtype=np.int))
 
 class MpiKsatAssignment(object):
   def __init__(self, assignmentBroadcast):

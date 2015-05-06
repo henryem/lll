@@ -38,7 +38,7 @@ def addAll(dicts):
   if len(dicts) == 0:
     return {}
   base = {}
-  for d in dicts
+  for d in dicts:
     base.update(d)
   return base
 

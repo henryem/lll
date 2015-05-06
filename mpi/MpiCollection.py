@@ -1,7 +1,9 @@
 import itertools
 
 import Utils
+import CollectionUtils
 from MpiChunks import MpiChunks
+from MpiUtils import onMaster
 
 # A simple distributed collection in MPI.  Each processor has its own
 # subcollection.  The implementation follows the MPMD model of MPI.  The
@@ -17,15 +19,16 @@ from MpiChunks import MpiChunks
 #  - It is assumed that no operations on this collection change its
 #    partitioning.  Explicit repartitioning could be supported.
 class MpiCollection(object):
-  def __init__(self, distributedChunks, partitioner):
+  #FIXME
+  def __init__(self, distributedChunks):#, partitioner):
     self.distributedChunks = distributedChunks
-    self.partitioner = partitioner
+    # self.partitioner = partitioner
   
   def map(self, f):
-    return MpiCollection(self.distributedChunks.mapChunks(lambda chunk: [f(elt) for elt in chunk]), self.partitioner)
+    return MpiCollection(self.mapChunks(lambda chunk: [f(elt) for elt in chunk]))#, self.partitioner)
   
   def filter(self, pred):
-    return MpiCollection(self.distributedChunks.mapChunks(lambda chunk: [elt for elt in chunk if pred(elt)]), self.partitioner)
+    return MpiCollection(self.mapChunks(lambda chunk: [elt for elt in chunk if pred(elt)]))#, self.partitioner)
   
   # Should be called on all processors; will return None on all but processor
   # 0.
@@ -33,16 +36,24 @@ class MpiCollection(object):
     collectedChunks = self.distributedChunks.collect()
     return onMaster(self.comm(), lambda : itertools.chain.from_iterable(collectedChunks))
 
+  def reduce(self, zero, plus):
+    return self.mapChunks(lambda chunk: reduce(plus, chunk, zero)).reduce(zero, plus)
+
+  def size(self):
+    numElements = self.mapChunks(lambda chunk: len(chunk)).reduce(0, lambda x, y: x + y)
+    return onMaster(self.comm(), lambda : numElements)
+
   # Should be called on all processors.  Will return the entire collection
   # everywhere.
   def collectEverywhere(self):
     return itertools.chain.from_iterable(self.distributedChunks.collectEverywhere())
 
   def mapChunks(self, f):
-    return MpiCollection(self.distributedChunks.mapChunks(f), self.partitioner)
+    return self.distributedChunks.mapChunks(f)#, self.partitioner)
 
-  def partitionOf(self, elt):
-    return self.partitioner.apply(elt)
+  #FIXME
+  # def partitionOf(self, elt):
+  #   return self.partitioner.apply(elt)
 
   def localElements(self):
     return self.distributedChunks.localChunk
@@ -50,10 +61,13 @@ class MpiCollection(object):
   # Valid only on a collection of pairs with unique keys.  No warning will be
   # given if the keys are not unique.
   def toDict(self):
-    return MpiDict(self.distributedChunks.mapChunks(lambda chunk: dict(chunk)))
+    return MpiDict(self.mapChunks(lambda chunk: dict(chunk)))
 
   def comm(self):
     return self.distributedChunks.comm
+
+def collectionFromLocal(comm, localCollection):
+  return MpiCollection(MpiChunks(comm, localCollection))
 
 def makeRange(comm, numElements):
   numProcessors = comm.size
@@ -62,18 +76,18 @@ def makeRange(comm, numElements):
   numLocalElements = partitioning[localProcIdx]
   localStartIdx = sum(partitioning[0:localProcIdx])
   localElements = range(localStartIdx, localStartIdx+numLocalElements)
-  partitioner = Partitioner(Utils.makeEvenPartitioner(numElements, numProcessors))
-  return MpiCollection(MpiChunks(comm, localElements), partitioner)
+  # partitioner = Partitioner(Utils.makeEvenPartitioner(numElements, numProcessors))
+  return collectionFromLocal(comm, localElements)#, partitioner)
 
-def makeEmpty(comm, partitioner):
-  return MpiCollection(MpiChunks(comm, []), partitioner)
+def makeEmpty(comm):#, partitioner):
+  return collectionFromLocal(comm, [])#, partitioner)
 
-class Partitioner(object):
-  def __init__(self, partitionFunc):
-    self.partitionFunc = partitionFunc
-  
-  def apply(self, elt):
-    self.partitionFunc(elt)
+# class Partitioner(object):
+#   def __init__(self, partitionFunc):
+#     self.partitionFunc = partitionFunc
+#
+#   def apply(self, elt):
+#     self.partitionFunc(elt)
 
 
 # A distributed dictionary.  Currently only supports local lookups.
@@ -87,13 +101,16 @@ class MpiDict(object):
   def comm(self):
     return self.dictChunks.comm
   
+  def values(self):
+    return collectionFromLocal(self.comm(), self.localDict().values())
+  
   def collect(self):
     dicts = self.dictChunks.collect()
     return onMaster(self.comm(), lambda : addAll_update(dicts))
   
   def collectEverywhere(self):
     dicts = self.dictChunks.collectEverywhere()
-    return addAll_update(dicts)
+    return CollectionUtils.addAll_update(dicts)
   
   def __getitem__(self, item):
     return self.dictChunks.localData()[item]
