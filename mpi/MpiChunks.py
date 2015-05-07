@@ -29,3 +29,6 @@ class MpiChunks(object):
   def reduce(self, zero, plus):
     collectedValue = self.collect()
     return onMaster(self.comm, lambda : reduce(plus, collectedValue, zero))
+  
+  def reduceEverywhere(self, zero, plus):
+    return reduce(plus, self.collectEverywhere(), zero)

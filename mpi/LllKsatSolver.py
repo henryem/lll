@@ -6,12 +6,12 @@ import MpiKsatAssignment
 import KsatSolution
 import Utils
 
-# The set of indices of local clauses in @problem that are unsatisfied under
+# The set of indices of clauses in @problem that are unsatisfied under
 # @assignment.
-def localUnsatisfiedClauses(problem, assignment):
+def unsatisfiedClauses(problem, assignment):
   localClausesByIdx = problem.localClausesByIdx()
   localAssignment = assignment.localAssignment()
-  return set(clauseIdx for clauseIdx, clause in problem.localClausesByIdx() if localAssignment.satisfiesClause(clause))
+  return setFromLocal(set(clauseIdx for clauseIdx, clause in problem.localClausesByIdx() if localAssignment.satisfiesClause(clause)))
 
 # A class of LLL algorithms for solving distributed k-SAT problems.  Solvers
 # are parameterized by a method for finding independent sets in clause
@@ -24,19 +24,17 @@ class LllKsatSolver(MpiKsatSolver):
   def solve(self, rand, problem):
     comm = problem.comm()
     n = problem.numVariables
-    graph = MpiGraph.makeKsatDependencyGraph(problem)
+    graph = problem.toDependencyGraph()
     currentAssignment = MpiKsatAssignment.uniformRandomMpiKsatAssignment(rand, n)
     maxNumIterations = self.independentSetFinder.calculateNumIterations(problem, graph)
     independentSetFunc = self.independentSetFunc.buildFinderFunc(rand, graph)
     for i in xrange(maxNumIterations):
       # At the beginning of each iteration of this loop, @currentAssignment
       # is consistent across processors.
-      unsatisfiedClauses = localUnsatisfiedClauses(problem, currentAssignment)
-      if len(unsatisfiedClauses) == 0:
+      unsatisfiedClauses = unsatisfiedClauses(problem, currentAssignment)
+      if unsatisfiedClauses.toCollection().sizeEverywhere() == 0:
         return onMaster(comm, lambda : KsatSolution.success(currentAssignment.localAssignment()))
-      #FIXME: Implement.
-      unsatSubgraph = MpiGraph.inducedSubgraph(unsatisfiedClauses)
-      #FIXME: Implement.
+      unsatSubgraph = graph.inducedSubgraph(unsatisfiedClauses)
       localIndependentSet = independentSetFunc(unsatSubgraph)
       localClausesByIdx = problem.localClausesByIdx()
       #FIXME: Weird initialization.

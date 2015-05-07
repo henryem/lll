@@ -1,4 +1,7 @@
+import math
+
 import MpiGraph
+import MpiCollection
 import Utils
 
 # Returns a maximal independent set (in the form of an MpiSet) in
@@ -13,7 +16,7 @@ def lubyIndependentSet(rand, graph):
   return findLocalMinima(graph, marks)
 
 def markNodesRandomly(graph, distribution):
-  graph.nodes().map(lambda node: (node, distribution())).toDict()
+  return graph.nodesIterator().map(lambda node: (node, distribution())).toDict()
 
 def findLocalMinima(graph, marks):
   return findLocalMaxima(graph, marks, lambda x, y: x < y)
@@ -24,25 +27,22 @@ def findLocalMaxima(graph, marks, comparatorFunc):
   # processor.  Then the remaining nodes (and their weights) are all-gathered
   # and a similar algorithm is run again, with each processor checking its
   # nodes against their neighbors in the rest of the graph.
-  potentialLocalMaxima = findLocalMaximaAmongNodes(graph, graph.nodes(), marks, comparatorFunc)
-  potentialsWithMarks = MpiDict(graph.comm(), {node: marks[node] for node in potentialLocalMaxima})
+  potentialLocalMaxima = findLocalMaximaAmongNodes(graph, graph.nodesIterator(), marks, comparatorFunc)
+  potentialsWithMarks = MpiCollection.dictFromLocal(graph.comm(), {node: marks[node] for node in potentialLocalMaxima})
   allPotentialsWithMarks = potentialsWithMarks.collectEverywhere()
   allPotentials = set(allPotentialsWithMarks.keys())
-  #FIXME: Implement this.
-  remainingGraph = inducedSubgraphPlusFringe(graph, potentialLocalMaxima, allPotentials)
-  localMaxima = findLocalMaximaAmongNodes(remainingGraph, potentialLocalMaxima, comparatorFunc)
+  remainingGraph = graph.inducedSubgraphPlusFringe(potentialLocalMaxima, allPotentials)
+  localMaxima = findLocalMaximaAmongNodes(remainingGraph, potentialLocalMaxima, allPotentialsWithMarks, comparatorFunc)
   return localMaxima
 
 # Find elements of @potentialMaxima (a set of nodes) that are strict local 
 # maxima according to @comparatorFunc.
-# This subroutine is a little complicated, but it is useful in implementing
-# findLocalMaxima() above.
 def findLocalMaximaAmongNodes(graph, potentialMaxima, marks, comparatorFunc):
   def isLocalMaximum(node):
     mark = marks[node]
     neighbors = graph.localNeighbors(node)
     return all(itertools.imap(lambda neighbor: comparatorFunc(mark, marks[neighbor]), neighbors))
-  
+  #FIXME: May need to reify the result, since potentialMaxima may be a distributed iterator.
   return potentialMaxima.filter(isLocalMaximum)
 
 
@@ -54,7 +54,7 @@ class IndependentSetFinder(object):
   
   # The number of iterations to use when running the Moser-Tardos algorithm
   # using this algorithm to find independent sets on each iteration.
-  def calculateNumIterations(self, graph):
+  def calculateNumIterations(self, problem, graph):
     pass
   
   # Returns a function from subgraphs of @graph to sets of nodes local to this
@@ -69,9 +69,9 @@ class IndependentSetFinder(object):
 
 class MoserTardosIndependentSetFinder(IndependentSetFinder):
   def __init__(self):
-    super(MoserTardosIndependentSetFinder, self).__init__(self)
+    super(MoserTardosIndependentSetFinder, self).__init__()
 
-  def calculateNumIterations(self, graph):
+  def calculateNumIterations(self, problem, graph):
     pass
   
   def buildFinderFunc(self, rand, graph):
@@ -80,18 +80,30 @@ class MoserTardosIndependentSetFinder(IndependentSetFinder):
 
 class SimpleChungIndependentSetFinder(IndependentSetFinder):
   def __init__(self):
-    super(SimpleChungIndependentSetFinder, self).__init__(self)
+    super(SimpleChungIndependentSetFinder, self).__init__()
 
-  def calculateNumIterations(self, graph):
-    pass
+  def calculateNumIterations(self, problem, graph):
+    #FIXME
+    m = graph.sizeEverywhere()
+    d = graph.maxDegreeEverywhere()
+    p = 2.0**(-1.0*problem.k)
+    base = 1.0/(math.e*p*(d+1))
+    if base < 1.0:
+      #TODO: Totally unclear if this is reasonable.
+      return m
+    else:
+      #TODO: Probably need a minimum threshold here, since the theoretical
+      # analysis gives asymptotic guarantees.  But it's not clear what
+      # it should be.
+      return max(100, int(ceil(log(base, m))))
   
   def buildFinderFunc(self, rand, graph):
-    pass
+    return lambda subgraph: findLocalMinima(subgraph, marks)
 
 
 class WeakMisFinder(IndependentSetFinder):
   def __init__(self):
-    super(WeakMisFinder, self).__init__(self)
+    super(WeakMisFinder, self).__init__()
 
   def calculateNumIterations(self, graph):
     pass

@@ -4,7 +4,8 @@ import numpy as np
 
 import MpiKsatProblem
 import ExhaustiveMpiKsatSolver
-import LllMpiKsatSolver
+import LllKsatSolver
+import IndependentSetFinder
 
 def parseArgs():
   parser = argparse.ArgumentParser()

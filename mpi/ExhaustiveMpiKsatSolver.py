@@ -42,7 +42,6 @@ class ExhaustiveDataParallelSolver(MpiKsatSolver):
     numSatisfyingAssignments = 0
     if comm.rank == 0:
       satisfyingAssignments = set()
-    #FIXME: Is apparently broken.
     for binaryAssignment in xrange(numPotentialSolutions):
       MpiKsatAssignment.unpackTo(binaryAssignment, localAssignment, n)
       if localAssignment.satisfiesClauses(problem.localClauses()):

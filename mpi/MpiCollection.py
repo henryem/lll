@@ -39,9 +39,15 @@ class MpiCollection(object):
   def reduce(self, zero, plus):
     return self.mapChunks(lambda chunk: reduce(plus, chunk, zero)).reduce(zero, plus)
 
+  def reduceEverywhere(self, zero, plus):
+    return self.mapChunks(lambda chunk: reduce(plus, chunk, zero)).reduceEverywhere(zero, plus)
+
   def size(self):
     numElements = self.mapChunks(lambda chunk: len(chunk)).reduce(0, lambda x, y: x + y)
     return onMaster(self.comm(), lambda : numElements)
+
+  def sizeEverywhere(self):
+    return self.mapChunks(lambda chunk: len(chunk)).reduceEverywhere(0, lambda x, y: x + y)
 
   # Should be called on all processors.  Will return the entire collection
   # everywhere.
@@ -128,7 +134,10 @@ class MpiSet(object):
     return self.setChunks.localData()
   
   def comm(self):
-    return self.dictChunks.comm
+    return self.setChunks.comm
+  
+  def toCollection(self):
+    return MpiCollection(self.setChunks)
 
 def setFromLocal(comm, localSet):
   return MpiSet(MpiChunks(comm, localSet))
