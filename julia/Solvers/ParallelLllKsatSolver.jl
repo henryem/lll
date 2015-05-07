@@ -101,7 +101,7 @@ immutable SimpleChungIndependentSetFinder <: IndependentSetFinder end
 
 function buildFinderFunc(this:: SimpleChungIndependentSetFinder, graph:: DependencyGraph)
   const markings = markNodesRandomly(graph)
-  return subgraph -> findLocalMinima(subgraph, markings)
+  return subgraph -> findLocalMinima(MarkedGraph{NodeMarker}(subgraph, markings.marks))
 end
 
 function calculateNumIterations(this:: SimpleChungIndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph)

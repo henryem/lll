@@ -39,7 +39,7 @@ end
 
 # Assign a random marker of type NodeMarker to each vertex of @this.
 function markNodesRandomly(this:: DependencyGraph)
-  markNodesRandomly(this, DiscreteUniform(typemin(NodeMarker), typemax(NodeMarker)))
+  markNodesRandomly(this, DiscreteUniform(0, typemax(NodeMarker)))
 end
 
 # Assign IID draws from @distribution to each node of @this.
