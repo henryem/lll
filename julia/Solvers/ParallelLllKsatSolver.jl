@@ -80,10 +80,10 @@ function buildFinderFunc(this:: MoserTardosIndependentSetFinder, graph:: Depende
 end
 
 function calculateNumIterations(this:: MoserTardosIndependentSetFinder, problem:: KsatProblem, graph:: DependencyGraph)
-  n = length(nodes(graph))
-  d = maxDegree(graph)
-  p = 2.0^(-1.0*problem.k)
-  base = 1.0/(e*p*(d+1))
+  const n = length(nodes(graph))
+  const d = maxDegree(graph)
+  const p = 2.0^(-1.0*problem.k)
+  const base = 1.0/(e*p*(d+1))
   #HACK
   max(100, int(ceil(log(base, n))))
 end

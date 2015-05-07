@@ -67,8 +67,6 @@ immutable KsatDependencyGraph <: DependencyGraph
   # in both directions.
   edges:: Set{(Int64, Int64)}
   neighbors:: Dict{Int64, Set{Int64}}
-  maxDegree:: Int64
-  totalDegree:: Int64
 end
 
 function nodes(this:: DependencyGraph)
@@ -94,25 +92,66 @@ function inducedSubgraph(this:: KsatDependencyGraph, nodeSubset:: Set{Int64})
   KsatDependencySubgraph(this, nodeSubset)
 end
 
-function makeKsatDependencyGraph(problem:: KsatProblem)
-  nodes = Set(1:numClauses(problem))
+# Compute the edges and neighbor-sets of the dependency graph corresponding
+# to @problem.
+function computeEdgesAndNeighbors(problem:: KsatProblem)
+  if problem.numVariables > numClauses(problem)
+    computeEdgesAndNeighborsByNode(problem)
+  else
+    computeEdgesAndNeighborsByVariable(problem)
+  end
+end
+
+# As computeEdgesAndNeighbors, but takes O(n m) time, where m is the number
+# of clauses in @problem and n is the number of variables.
+function computeEdgesAndNeighborsByVariable(problem:: KsatProblem)
   edges = Set{(Int64, Int64)}()
   neighbors = Dict{Int64, Set{Int64}}()
-  maxDegree = 0
-  totalDegree = 0
+  for variable in 1:problem.numVariables
+    # First identify all clauses sharing this variable.
+    clausesWithVariableIndices = Set{Int64}()
+    for (clauseIdx, clause) in enumerate(problem.clauses)
+      if variable in clause.variables #TODO: Takes O(k) time.
+        push!(clausesWithVariableIndices, clauseIdx)
+      end
+    end
+    # Now add edges between all the clauses sharing the variable.
+    for clauseIdx in clausesWithVariableIndices
+      for otherClauseIdx in clausesWithVariableIndices
+        if clauseIdx != otherClauseIdx
+          push!(edges, (clauseIdx, otherClauseIdx))
+          push!(get!(() -> Set{Int64}(), neighbors, clauseIdx), otherClauseIdx)
+        end
+      end
+    end
+  end
+  (edges, neighbors)
+end
+
+# As computeEdgesAndNeighbors, but takes O(m^2) time, where m is the number
+# of clauses in @problem.
+function computeEdgesAndNeighborsByNode(problem:: KsatProblem)
+  edges = Set{(Int64, Int64)}()
+  neighbors = Dict{Int64, Set{Int64}}()
   for (clauseIdx, clause) in enumerate(problem.clauses)
-    numEdges = 0
     for (otherClauseIdx, otherClause) in enumerate(problem.clauses)
       if clauseIdx != otherClauseIdx && checkForEdge(clause, otherClause)
         push!(edges, (clauseIdx, otherClauseIdx))
         push!(get!(() -> Set{Int64}(), neighbors, clauseIdx), otherClauseIdx)
-        numEdges += 1
       end
     end
-    maxDegree = max(maxDegree, numEdges)
-    totalDegree += numEdges
   end
-  KsatDependencyGraph(problem, nodes, edges, neighbors, maxDegree, totalDegree)
+  (edges, neighbors)
+end
+
+function makeKsatDependencyGraph(problem:: KsatProblem)
+  nodes = Set(1:numClauses(problem))
+  println("Building graph...")
+  edgesAndNeighbors = computeEdgesAndNeighbors(problem)
+  println("Done building graph.")
+  edges = edgesAndNeighbors[1]
+  neighbors = edgesAndNeighbors[2]
+  KsatDependencyGraph(problem, nodes, edges, neighbors)
 end
 
 function checkForEdge(clauseA:: SatClause, clauseB:: SatClause)
