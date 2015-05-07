@@ -44,35 +44,44 @@ function run()
   const solver = eval(parse(args["solver"]))
 
   x = Float64[]
-  const times = 1
+  const times = 100
 
-  sum_maxDegree = Int64[]
+  #sum_maxDegree = Int64[]
   #sum_avgDegree = Float64[]
 
-  for i=1:times
-    const problem = generate(problemGenerator)
 
-    const graph = makeKsatDependencyGraph(problem)
-    push!(sum_maxDegree,graph.maxDegree)
-    #push!(sum_avgDegree,graph.totalDegree/length(graph.nodes))
+  for i=1:times
+    srand(i)
+    const problem = generate(problemGenerator)
+    #println("[Seed:$(i)] $(string(problem))")
+
+    #const graph = makeKsatDependencyGraph(problem)
+    #max = maxDegree(graph)
+    #println("$(max)")
+    #push!(sum_maxDegree,max)
+    
+    #push!(sum_avgDegree,totalDegree(graph)/length(graph.nodes))
 
     if args["compare-ground-truth"]
-      push!(x,compareGroundTruth(problem))
+      const result = compareGroundTruth(problem)
+      println("[Seed:$(i)] $(string(result))")
+      push!(x,result)
     end
 
   end
 
-  sort!(sum_maxDegree)
+  #sort!(sum_maxDegree)
   #sort!(sum_avgDegree)
+  
   sort!(x)
 
-  println("$(string(sum_maxDegree[1]))\t$(string(sum_maxDegree[2]))\t$(string(sum_maxDegree[5]))\t$(string(sum_maxDegree[9]))\t$(string(sum_maxDegree[10]))")
+  #println("$(string(sum_maxDegree[1]))\t$(string(sum_maxDegree[2]))\t$(string(sum_maxDegree[3]))\t$(string(sum_maxDegree[4]))\t$(string(sum_maxDegree[10]))")
 
   #println("$(string(sum_avgDegree[1]))\t$(string(sum_avgDegree[2]))\t$(string(sum_avgDegree[5]))\t$(string(sum_avgDegree[9]))\t$(string(sum_avgDegree[10]))")
 
-  println("$(string(x[1]))\t$(string(x[1]))\t$(string(x[1]))\t$(string(x[1]))\t$(string(x[1]))")
+  println("$(string(x[1]))\t$(string(x[10]))\t$(string(x[50]))\t$(string(x[90]))\t$(string(x[100]))")
 
-  println("$(string(problem))")
+
 
   #const solution = solve(solver, problem)
   #println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution #found for $(problem.k)-SAT problem with n=$(problem.numVariables), numClauses=$(length(problem.clauses))")

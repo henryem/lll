@@ -10,10 +10,10 @@ function solve(this:: ExhaustiveKsatSolver, problem:: KsatProblem)
 
 
 #  const numPotentialSolutions = 2^n
-  if n < 15
+  if n < 12
     const numPotentialSolutions = 2^n
   else
-    const numPotentialSolutions = 2^15
+    const numPotentialSolutions = 2^12
   end
 
   for binaryAssignment:: Uint64 = 1:numPotentialSolutions

@@ -36,19 +36,20 @@ end
 function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
   # See Moser and Tardos 2010, algorithms 1 and 2.
   const n = problem.numVariables
-  println("Problem: $(string(problem))")
+  #println("Problem: $(string(problem))")
   assignment = uniformRandomAssignment(n)
   annotatedProblem = annotateKsatProblem(problem, assignment)
   #NOTE: Could be parallelized.
   const graph = makeKsatDependencyGraph(problem)
   const maxNumIterations = calculateNumIterations(this.independentSetFinder, problem, graph)
   const independentSetFunc = buildFinderFunc(this.independentSetFinder, graph)
-  println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses.")
+  #println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses.")
   for i = 1:maxNumIterations
     #NOTE: Could be parallelized.
     const unsat = unsatisfiedClauses(annotatedProblem)
     if isempty(unsat)
-      println("Found successful solution after $(i) iterations.")
+      println("$(i)")
+      #println("Found successful solution after $(i) iterations.")
       return toSuccessfulSolution(annotatedProblem)
     end
     const independentSet = independentSetFunc(inducedSubgraph(graph, unsat))

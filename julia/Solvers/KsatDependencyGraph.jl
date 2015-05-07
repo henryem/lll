@@ -146,9 +146,9 @@ end
 
 function makeKsatDependencyGraph(problem:: KsatProblem)
   nodes = Set(1:numClauses(problem))
-  println("Building graph...")
+  #println("Building graph...")
   edgesAndNeighbors = computeEdgesAndNeighbors(problem)
-  println("Done building graph.")
+  #println("Done building graph.")
   edges = edgesAndNeighbors[1]
   neighbors = edgesAndNeighbors[2]
   KsatDependencyGraph(problem, nodes, edges, neighbors)

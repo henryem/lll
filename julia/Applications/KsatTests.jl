@@ -24,8 +24,11 @@ function parseArgs()
     "--compare-ground-truth", "-g"
       help = "whether to solve exhaustively to compare with ground truth"
       action = :store_true
-    "--seed", "-e"
-      help = "the random seed" #FIXME
+    "--problem-seed", "-e"
+      help = "the random seed for generating the problem"
+      arg_type = Int
+    "--solver-seed", "-l"
+      help = "the random seed for solving the problem"
       arg_type = Int
   end
 
@@ -33,18 +36,19 @@ function parseArgs()
 end
 
 function run()
-  # @foo()
   const args = parseArgs()
+  srand(args["problem-seed"])
   const problemGenerator = eval(parse(args["data-generator"]))
-  const solver = eval(parse(args["solver"]))
   const problem = generate(problemGenerator)
+  srand(args["solver-seed"])
+  const solver = eval(parse(args["solver"]))
   if args["compare-ground-truth"]
     compareGroundTruth(problem)
   end
   const solution = solve(solver, problem)
-  println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution found for $(problem.k)-SAT problem with n=$(problem.numVariables), numClauses=$(length(problem.clauses))")
-  println("Check: $(checkSuccess(solution.assignment, problem))")
-  println("Solution: $(solution.assignment)")
+  #println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution found for $(problem.k)-SAT problem with n=$(problem.numVariables), numClauses=$(length(problem.clauses))")
+  #println("Check: $(checkSuccess(solution.assignment, problem))")
+  #println("Solution: $(solution.assignment)")
 end
 
 run()
