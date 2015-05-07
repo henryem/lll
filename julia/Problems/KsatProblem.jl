@@ -23,7 +23,7 @@ immutable KsatProblem <: Problem
   clauses:: AbstractVector{SatClause}
 end
 
-const MAX_DISPLAYED_LITERALS = 200
+const MAX_DISPLAYED_LITERALS = 20000000
 function Base.string(this:: KsatProblem)
   const maxDisplayedClauses = int(MAX_DISPLAYED_LITERALS / this.k)
   const numDisplayedClauses = min(maxDisplayedClauses, numClauses(this))

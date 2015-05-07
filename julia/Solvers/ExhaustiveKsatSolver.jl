@@ -7,7 +7,15 @@ function solve(this:: ExhaustiveKsatSolver, problem:: KsatProblem)
   assignment = BitVector(n)
   satisfyingAssignment = uniformRandomAssignment(n)
   numSatisfyingSolutions = 0
-  const numPotentialSolutions = 2^n
+
+
+#  const numPotentialSolutions = 2^n
+  if n < 15
+    const numPotentialSolutions = 2^n
+  else
+    const numPotentialSolutions = 2^15
+  end
+
   for binaryAssignment:: Uint64 = 1:numPotentialSolutions
     #TODO: Could be done much faster with a Gray code or a direct conversion
     # from binary to BitVector.
@@ -21,5 +29,7 @@ function solve(this:: ExhaustiveKsatSolver, problem:: KsatProblem)
       numSatisfyingSolutions += 1
     end
   end
+
+
   return AnnotatedKsatSolution(satisfyingAssignment, numSatisfyingSolutions > 0, numSatisfyingSolutions, numPotentialSolutions)
 end
