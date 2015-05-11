@@ -44,9 +44,9 @@ function run()
   const solver = eval(parse(args["solver"]))
 
   x = Float64[]
-  const times = 100
+  const times = 20
 
-  #sum_maxDegree = Int64[]
+  sum_maxDegree = Int64[]
   #sum_avgDegree = Float64[]
 
 
@@ -55,10 +55,10 @@ function run()
     const problem = generate(problemGenerator)
     #println("[Seed:$(i)] $(string(problem))")
 
-    #const graph = makeKsatDependencyGraph(problem)
-    #max = maxDegree(graph)
-    #println("$(max)")
-    #push!(sum_maxDegree,max)
+    const graph = makeKsatDependencyGraph(problem)
+    max = maxDegree(graph)
+    println("[Seed:$(i)] $(max)")
+    push!(sum_maxDegree,max)
     
     #push!(sum_avgDegree,totalDegree(graph)/length(graph.nodes))
 
@@ -70,16 +70,16 @@ function run()
 
   end
 
-  #sort!(sum_maxDegree)
+  sort!(sum_maxDegree)
   #sort!(sum_avgDegree)
   
   sort!(x)
 
-  #println("$(string(sum_maxDegree[1]))\t$(string(sum_maxDegree[2]))\t$(string(sum_maxDegree[3]))\t$(string(sum_maxDegree[4]))\t$(string(sum_maxDegree[10]))")
+  println("$(string(sum_maxDegree[1]))\t$(string(sum_maxDegree[3]))\t$(string(sum_maxDegree[10]))\t$(string(sum_maxDegree[18]))\t$(string(sum_maxDegree[20]))")
 
-  #println("$(string(sum_avgDegree[1]))\t$(string(sum_avgDegree[2]))\t$(string(sum_avgDegree[5]))\t$(string(sum_avgDegree[9]))\t$(string(sum_avgDegree[10]))")
+  #println("$(string(sum_avgDegree[1]))\t$(string(sum_avgDegree[3]))\t$(string(sum_avgDegree[10]))\t$(string(sum_avgDegree[18]))\t$(string(sum_avgDegree[20]))")
 
-  println("$(string(x[1]))\t$(string(x[10]))\t$(string(x[50]))\t$(string(x[90]))\t$(string(x[100]))")
+  println("$(string(x[1]))\t$(string(x[3]))\t$(string(x[10]))\t$(string(x[18]))\t$(string(x[20]))")
 
 
 
