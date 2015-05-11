@@ -4,8 +4,10 @@ from MpiKsatSolver import MpiKsatSolver
 from MpiChunks import MpiChunks
 import MpiCollection
 from MpiUtils import onMaster
+import MpiUtils
 import MpiKsatAssignment
 import KsatSolution
+import Utils
 
 def collectAndCombineLocalAssignments(comm, locallySatisfyingAssignments):
   allLocalAssignments = locallySatisfyingAssignments.collect()
@@ -105,6 +107,49 @@ class ExhaustiveProcessParallelSolver(MpiKsatSolver):
     def buildSolution():
       numSatisfyingAssignments, arbitrarySatisfyingAssignment = resultStatistics
       print "%d out of %d satisfying assignments." % (numSatisfyingAssignments, numPotentialSolutions)
+      if arbitrarySatisfyingAssignment > -1:
+        return KsatSolution.success(MpiKsatAssignment.unpack(arbitrarySatisfyingAssignment, n))
+      else:
+        return KsatSolution.failure()
+    
+    return onMaster(problem.comm(), buildSolution)
+
+# A solver that broadcasts clauses and partitions a random subset of the
+# set of assignments across machines.  Does essentially no communication.  Not
+# guaranteed to find a solution if one exists.
+#TODO: Refactor to share code with the exhaustive version.
+class SamplingProcessParallelSolver(MpiKsatSolver):
+  def __init__(self, numSamples):
+    self.numSamples = numSamples
+    super(SamplingProcessParallelSolver, self).__init__()
+  
+  def solve(self, rand, problem):
+    comm = problem.comm()
+    n = problem.numVariables
+    numPotentialSolutions = 2**n
+    numSamples = self.numSamples
+    startingSeed = Utils.randLargeInt(rand)
+    binaryAssignments = (MpiCollection.makeRange(comm, numSamples)
+      .map(lambda idx: MpiUtils.makeRandForItem(startingSeed, idx).randint(0, numPotentialSolutions)))
+    currentAssignment = MpiKsatAssignment.emptyMpiKsatAssignment(problem.comm(), n)
+    currentLocalAssignment = currentAssignment.localAssignment()
+    #FIXME: collectEverywhere() probably should return a list, not an iterable.
+    allClauses = list(problem.distributedClauses().values().collectEverywhere())
+    
+    if comm.rank == 0:
+      print allClauses
+    
+    def checkBinaryAssignment(binaryAssignment):
+      MpiKsatAssignment.unpackTo(binaryAssignment, currentLocalAssignment, n)
+      return currentLocalAssignment.satisfiesClauses(allClauses)
+    satisfyingBinaryAssignments = binaryAssignments.filter(checkBinaryAssignment)
+    resultStatistics = (satisfyingBinaryAssignments
+      .map(lambda elt: (1, elt))
+      .reduce((0, -1), lambda countAndMaxA, countAndMaxB: (countAndMaxA[0] + countAndMaxB[0], max(countAndMaxA[1], countAndMaxB[1]))))
+    
+    def buildSolution():
+      numSatisfyingAssignments, arbitrarySatisfyingAssignment = resultStatistics
+      print "%d out of %d satisfying assignments." % (numSatisfyingAssignments, numSamples)
       if arbitrarySatisfyingAssignment > -1:
         return KsatSolution.success(MpiKsatAssignment.unpack(arbitrarySatisfyingAssignment, n))
       else:

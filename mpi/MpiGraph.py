@@ -1,7 +1,6 @@
 import itertools
 
 import CollectionUtils
-import SetUtils
 import MpiCollection
 
 # A distributed undirected graph.  Nodes are simply integer IDs.  Nodes are 
