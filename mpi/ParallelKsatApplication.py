@@ -34,7 +34,7 @@ def run():
   if comm.rank == 0:
     print "Finished running solver %s; found %s" % (args.solver, solution)
   
-  satisfactionCheck = problem.isSatisfiedBy(lambda : solution.assignment())
+  satisfactionCheck = problem.isSatisfiedBy(solution)
   if comm.rank == 0:
     if satisfactionCheck != solution.isSuccessful():
       print "Solution check failure: Solver claimed success was %s but was %s!" % (solution.isSuccessful(), satisfactionCheck)

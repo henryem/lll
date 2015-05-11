@@ -66,11 +66,11 @@ class MpiKsatProblem(object):
   def localClausesByIdx(self):
     return self.distributedClausesV.localDict()
   
-  def isSatisfiedBy(self, assignmentThunk):
-    broadcastAssignment = MpiBroadcast.broadcast(self.comm(), assignmentThunk)
+  def isSatisfiedBy(self, solution):
+    broadcastSolution = MpiBroadcast.broadcast(self.comm(), solution)
     isSatisfied = (self.distributedClausesV
       .values()
-      .map(lambda clause: broadcastAssignment.value().satisfiesClause(clause))
+      .map(lambda clause: broadcastSolution.value().assignment() is not None and broadcastSolution.value().assignment().satisfiesClause(clause))
       .reduce(True, lambda x, y: x and y))
     return MpiUtils.onMaster(self.comm(), lambda : isSatisfied)
   
