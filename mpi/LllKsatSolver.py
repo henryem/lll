@@ -22,7 +22,7 @@ class LllKsatSolver(MpiKsatSolver):
     graph = broadcastProblem.toDependencyGraph(comm)
     currentAssignment = MpiKsatAssignment.uniformRandomMpiKsatAssignment(comm, rand, n)
     maxNumIterations = self.independentSetFinder.calculateNumIterations(problem, graph)
-    if comm.rank == 0: print "Solving problem %s... with %s iterations." % (problem, maxNumIterations)
+    if comm.rank == 0: print "Solving problem with %s iterations." % maxNumIterations
     independentSetFunc = self.independentSetFinder.buildFinderFunc(rand, graph)
     for i in xrange(maxNumIterations):
       # At the beginning of each iteration of this loop, @currentAssignment

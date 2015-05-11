@@ -98,11 +98,12 @@ class ExhaustiveProcessParallelSolver(MpiKsatSolver):
       MpiKsatAssignment.unpackTo(binaryAssignment, currentLocalAssignment, n)
       return currentLocalAssignment.satisfiesClauses(allClauses)
     satisfyingBinaryAssignments = binaryAssignments.filter(checkBinaryAssignment)
-    numSatisfyingAssignments, arbitrarySatisfyingAssignment = (satisfyingBinaryAssignments
+    resultStatistics = (satisfyingBinaryAssignments
       .map(lambda elt: (1, elt))
       .reduce((0, -1), lambda countAndMaxA, countAndMaxB: (countAndMaxA[0] + countAndMaxB[0], max(countAndMaxA[1], countAndMaxB[1]))))
     
     def buildSolution():
+      numSatisfyingAssignments, arbitrarySatisfyingAssignment = resultStatistics
       print "%d out of %d satisfying assignments." % (numSatisfyingAssignments, numPotentialSolutions)
       if arbitrarySatisfyingAssignment > -1:
         return KsatSolution.success(MpiKsatAssignment.unpack(arbitrarySatisfyingAssignment, n))

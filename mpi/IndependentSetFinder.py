@@ -73,7 +73,7 @@ class SimpleChungIndependentSetFinder(IndependentSetFinder):
       #TODO: Probably need a minimum threshold here, since the theoretical
       # analysis gives only asymptotic guarantees.  But it's not clear what
       # it should be.
-      return max(100, int(ceil(log(base, m))))
+      return max(100, int(math.ceil(math.log(base, m))))
   
   def buildFinderFunc(self, rand, graph):
     marks = markNodesRandomly(graph, lambda : Utils.randLargeInt(rand))
