@@ -35,6 +35,7 @@ class ExhaustiveDataParallelSolver(MpiKsatSolver):
       print list(allClauses)
     
     n = problem.numVariables
+    assert n < 63
     numPotentialSolutions = 2**n
     locallySatisfyingAssignments = MpiChunks(problem.comm(), [])
     assignment = MpiKsatAssignment.emptyMpiKsatAssignment(problem.comm(), n)
@@ -86,6 +87,7 @@ class ExhaustiveProcessParallelSolver(MpiKsatSolver):
   def solve(self, rand, problem):
     comm = problem.comm()
     n = problem.numVariables
+    assert n < 63
     numPotentialSolutions = 2**n
     binaryAssignments = MpiCollection.makeRange(comm, numPotentialSolutions)
     currentAssignment = MpiKsatAssignment.emptyMpiKsatAssignment(problem.comm(), n)
