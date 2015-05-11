@@ -1,0 +1,15 @@
+for m in 1000
+do
+    for k in 4
+    do
+        for problem_seed in {50..51}
+        do
+        	for n in 120
+        	do
+        		echo "k=$k m=$m n=$n problem_seed=$problem_seed"
+        		mpirun -np 2 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator($k, $n, $m)" --solver "ExhaustiveMpiKsatSolver.SamplingProcessParallelSolver(10000)" --problemSeed $problem_seed --solverSeed 10
+        	done
+        done
+    done
+done
+

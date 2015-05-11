@@ -7,6 +7,7 @@ import MpiKsatAssignment
 import KsatSolution
 import Utils
 import CollectionUtils
+import datetime
 
 # A class of LLL algorithms for solving distributed k-SAT problems.  Solvers
 # are parameterized by a method for finding independent sets in clause
@@ -19,12 +20,31 @@ class LllKsatSolver(MpiKsatSolver):
   def solve(self, rand, problem):
     comm = problem.comm()
     n = problem.numVariables
+
+    
+    #broadcastStartTime = now()
+    broadcastStartTime = datetime.datetime.now()
     broadcastProblem = problem.toBroadcast()
+    broadcastEndTime = datetime.datetime.now()
+
+    #graphCreationStartTime = now()
+    graphCreationStartTime = datetime.datetime.now()
     graph = broadcastProblem.toDependencyGraph(comm)
+    graphCreationEndTime = datetime.datetime.now()
+    
     currentAssignment = MpiKsatAssignment.uniformRandomMpiKsatAssignment(comm, rand, n)
     maxNumIterations = self.independentSetFinder.calculateNumIterations(problem, graph)
     if comm.rank == 0: print "Solving problem with %s iterations." % maxNumIterations
+
+    #initialMarkingsStartTime = now()
+    initialMarkingsStartTime = datetime.datetime.now()
     independentSetFunc = self.independentSetFinder.buildFinderFunc(rand, graph)
+    initialMarkingsEndTime = datetime.datetime.now()
+
+
+    findIndependentSetAndResampleTotalTime = datetime.timedelta()
+    broadcastModifiedVariablesTotalTime = datetime.timedelta()
+
     for i in xrange(maxNumIterations):
       # At the beginning of each iteration of this loop, @currentAssignment
       # is consistent across processors.
@@ -35,6 +55,9 @@ class LllKsatSolver(MpiKsatSolver):
       locallyModifiedVariables = MpiCollection.dictFromLocal(comm, {})
       #FIXME
       localIndependentSetSize = 0
+      
+      #findIndependentSetAndResampleStartTime = now()
+      findIndependentSetAndResampleStartTime = datetime.datetime.now()
       for clauseIdx in localIndependentSet.localElements():
         clause = broadcastProblem.clausesByIdx[clauseIdx]
         #TODO: Only communicate modified variables to machines that need them.
@@ -44,12 +67,25 @@ class LllKsatSolver(MpiKsatSolver):
         updates = {variable: Utils.randBit(rand) for variable in clause.literals}
         locallyModifiedVariables.localDict().update(updates)
         localIndependentSetSize += 1
+      findIndependentSetAndResampleTotalTime += datetime.datetime.now() - findIndependentSetAndResampleStartTime
       # print "Using an independent set of size %d on iteration %d on machine %d." % (localIndependentSetSize, i, comm.rank)
       #TODO: Probably inefficient serialization here.  Should serialize as
       # a list of ints and a list of bools.
+
+      #broadcastModifiedVariablesStartTime = now()
+      broadcastModifiedVariablesStartTime = datetime.datetime.now()
       allModifiedVariables = locallyModifiedVariables.collectEverywhere()
+      broadcastModifiedVariablesTotalTime += datetime.datetime.now() - broadcastModifiedVariablesStartTime
+
       if len(allModifiedVariables) == 0:
-        print "Finished after %d iterations." % i
+        if comm.rank == 0:
+          print "\nBroadcast time = " + str((broadcastEndTime - broadcastStartTime).total_seconds())
+          print "Graph creation time = " + str((graphCreationEndTime - graphCreationStartTime).total_seconds())
+          print "Initial markings time = " + str((initialMarkingsEndTime - initialMarkingsStartTime).total_seconds())
+          print "Find independentSet and resample time = "+ str(findIndependentSetAndResampleTotalTime.total_seconds())
+          print "Boardcast modified variables time = "+ str(broadcastModifiedVariablesTotalTime.total_seconds())
+          print "\n"
+          print "Finished after %d iterations." % i
         return onMaster(comm, lambda : KsatSolution.success(localAssignment))
       # Update modified variables from everywhere.
       for var, value in allModifiedVariables.items():

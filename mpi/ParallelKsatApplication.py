@@ -1,6 +1,7 @@
 import argparse
 from mpi4py import MPI
 import numpy as np
+import datetime
 
 import MpiKsatProblem
 import ExhaustiveMpiKsatSolver
@@ -29,10 +30,16 @@ def run():
   #NOTE: The solver will perform differently for different numbers of machines,
   # even if the randoms seed is the same.
   solverRand = np.random.RandomState(args.solverSeed if args.solverSeed is not None else None)
+
+  wholeSolveStartTime = datetime.datetime.now()
   solution = solver.solve(solverRand, problem)
+  wholeSolveEndTime = datetime.datetime.now()
+
+  #if comm.rank == 0:
+  #  print "\nTotal Solving Time is " + str((wholeSolveEndTime - wholeSolveStartTime).total_seconds()) + "\n"
   
-  if comm.rank == 0:
-    print "Finished running solver %s; found %s" % (args.solver, solution)
+  #if comm.rank == 0:
+    #print "Finished running solver %s; found %s" % (args.solver, solution)
   
   satisfactionCheck = problem.isSatisfiedBy(solution)
   if comm.rank == 0:
