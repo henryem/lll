@@ -6,6 +6,7 @@ import MpiCollection
 import MpiKsatAssignment
 import KsatSolution
 import Utils
+import CollectionUtils
 
 # A class of LLL algorithms for solving distributed k-SAT problems.  Solvers
 # are parameterized by a method for finding independent sets in clause
@@ -29,8 +30,11 @@ class LllKsatSolver(MpiKsatSolver):
       # is consistent across processors.
       localAssignment = currentAssignment.localAssignment()
       unsatSubgraph = graph.filter(lambda clauseIdx: not localAssignment.satisfiesClause(broadcastProblem.clausesByIdx[clauseIdx]))
+      # print "%d unsatisfied clauses on iteration %d on machine %d: %s." % (CollectionUtils.iterlen(unsatSubgraph.nodesIterator().localElements()), i, comm.rank, {clauseIdx: broadcastProblem.clausesByIdx[clauseIdx] for clauseIdx in unsatSubgraph.nodesIterator().localElements()})
       localIndependentSet = independentSetFunc(unsatSubgraph)
       locallyModifiedVariables = MpiCollection.dictFromLocal(comm, {})
+      #FIXME
+      localIndependentSetSize = 0
       for clauseIdx in localIndependentSet.localElements():
         clause = broadcastProblem.clausesByIdx[clauseIdx]
         #TODO: Only communicate modified variables to machines that need them.
@@ -39,6 +43,8 @@ class LllKsatSolver(MpiKsatSolver):
         # machine is large).
         updates = {variable: Utils.randBit(rand) for variable in clause.literals}
         locallyModifiedVariables.localDict().update(updates)
+        localIndependentSetSize += 1
+      # print "Using an independent set of size %d on iteration %d on machine %d." % (localIndependentSetSize, i, comm.rank)
       #TODO: Probably inefficient serialization here.  Should serialize as
       # a list of ints and a list of bools.
       allModifiedVariables = locallyModifiedVariables.collectEverywhere()

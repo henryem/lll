@@ -15,3 +15,10 @@ class MpiMutableBroadcast(object):
   
   def comm(self):
     return self.chunks.comm()
+
+# Broadcast a value from processor 0 to every processor.
+def broadcast(comm, localValueThunk):
+  chunks = MpiChunks(comm, localValueThunk() if comm.rank == 0 else None)
+  allChunks = chunks.collectEverywhere()
+  broadcastChunk = allChunks[0]
+  return MpiMutableBroadcast(comm, broadcastChunk)

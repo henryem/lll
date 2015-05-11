@@ -1,26 +1,29 @@
 import math
 import itertools
+import operator
 
 import MpiGraph
 import MpiCollection
+import MpiUtils
 import Utils
 
 # Returns an independent set (in the form of an MpiSet) in @graph found 
 # by one iteration of Luby's algorithm.
 def lubyIndependentSet(rand, graph):
-  marks = markNodesRandomly(graph, lambda : Utils.randLargeInt(rand))
+  marks = markNodesRandomly(graph, lambda node: Utils.randLargeInt(rand))
   broadcastMarks = marks.collectEverywhere()
   return findLocalMinima(graph, broadcastMarks)
 
 def markNodesRandomly(graph, distribution):
-  return graph.nodesIterator().map(lambda node: (node, distribution())).toDict()
+  return graph.nodesIterator().map(lambda node: (node, distribution(node))).toDict()
 
 def findLocalMinima(graph, marks):
-  return findLocalMaxima(graph, marks, lambda x, y: x < y)
+  return findLocalMaxima(graph, marks, operator.lt)
 
 def findLocalMaxima(graph, marks, comparatorFunc):
   def isLocalMaximum(node):
     mark = marks[node]
+    # print "Checking whether %d is a local maximum: mark = %d, neighbors = %s, comparisons = %s" % (node, mark, {neighbor: marks[neighbor] for neighbor in graph.neighborsIterator(node)}, {neighbor: comparatorFunc(mark, marks[neighbor]) for neighbor in graph.neighborsIterator(node)})
     return all((comparatorFunc(mark, marks[neighbor]) for neighbor in graph.neighborsIterator(node)))
   return graph.filter(isLocalMaximum).nodesIterator()
 
@@ -76,7 +79,8 @@ class SimpleChungIndependentSetFinder(IndependentSetFinder):
       return max(100, int(math.ceil(math.log(base, m))))
   
   def buildFinderFunc(self, rand, graph):
-    marks = markNodesRandomly(graph, lambda : Utils.randLargeInt(rand))
+    startingSeed = Utils.randLargeInt(rand)
+    marks = markNodesRandomly(graph, lambda nodeIdx: MpiUtils.makeRandForItem(startingSeed, nodeIdx))
     broadcastMarks = marks.collectEverywhere()
     return lambda subgraph: findLocalMinima(subgraph, broadcastMarks)
 

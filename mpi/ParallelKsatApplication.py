@@ -26,11 +26,18 @@ def run():
   problem = eval(args.generator).generate(comm, problemRand)
   solver = eval(args.solver)
 
+  #NOTE: The solver will perform differently for different numbers of machines,
+  # even if the randoms seed is the same.
   solverRand = np.random.RandomState(args.solverSeed if args.solverSeed is not None else None)
   solution = solver.solve(solverRand, problem)
   
   if comm.rank == 0:
     print "Finished running solver %s; found %s" % (args.solver, solution)
+  
+  satisfactionCheck = problem.isSatisfiedBy(lambda : solution.assignment())
+  if comm.rank == 0:
+    if satisfactionCheck != solution.isSuccessful():
+      print "Solution check failure: Solver claimed success was %s but was %s!" % (solution.isSuccessful(), satisfactionCheck)
 
 if __name__ == "__main__":
   run()

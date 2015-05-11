@@ -4,7 +4,8 @@ from MpiUtils import onMaster
 # with a local chunk of arbitrary data.
 # Currently none of the operations on this object are lazy, so
 # mutating it is okay, subject to the usual issues with distributed data
-# structures.
+# structures.  However, lazy collections may be implemented on top of this
+# by passing lazy mappers to mapChunks().
 class MpiChunks(object):
   def __init__(self, comm, localChunk):
     self.comm = comm

@@ -5,6 +5,8 @@ import sys
 import MpiCollection
 import MpiUtils
 import MpiGraph
+import MpiBroadcast
+import MpiUtils
 import Utils
 import CollectionUtils
 
@@ -63,6 +65,14 @@ class MpiKsatProblem(object):
     
   def localClausesByIdx(self):
     return self.distributedClausesV.localDict()
+  
+  def isSatisfiedBy(self, assignmentThunk):
+    broadcastAssignment = MpiBroadcast.broadcast(self.comm(), assignmentThunk)
+    isSatisfied = (self.distributedClausesV
+      .values()
+      .map(lambda clause: broadcastAssignment.value().satisfiesClause(clause))
+      .reduce(True, lambda x, y: x and y))
+    return MpiUtils.onMaster(self.comm(), lambda : isSatisfied)
   
   def toBroadcast(self):
     allClausesByIdx = self.distributedClausesV.collectEverywhere()

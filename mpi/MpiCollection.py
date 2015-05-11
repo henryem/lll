@@ -1,4 +1,5 @@
 import itertools
+import operator
 
 import Utils
 import CollectionUtils
@@ -44,6 +45,11 @@ class MpiCollection(object):
     collectedChunks = self.distributedChunks.collect()
     return onMaster(self.comm(), lambda : itertools.chain.from_iterable(collectedChunks))
 
+  # Should be called on all processors.  Will return the entire collection
+  # everywhere (a broadcast).
+  def collectEverywhere(self):
+    return itertools.chain.from_iterable(self.distributedChunks.collectEverywhere())
+
   def reduce(self, zero, plus):
     return self.mapChunks(lambda chunk: reduce(plus, chunk, zero)).reduce(zero, plus)
 
@@ -51,21 +57,11 @@ class MpiCollection(object):
     return self.mapChunks(lambda chunk: reduce(plus, chunk, zero)).reduceEverywhere(zero, plus)
 
   def size(self):
-    numElements = self.mapChunks(lambda chunk: len(chunk)).reduce(0, lambda x, y: x + y)
+    numElements = self.mapChunks(_chunkLen).reduce(0, operator.add)
     return onMaster(self.comm(), lambda : numElements)
 
   def sizeEverywhere(self):
-    return self.mapChunks(lambda chunk: len(chunk)).reduceEverywhere(0, lambda x, y: x + y)
-
-  # Should be called on all processors.  Will return the entire collection
-  # everywhere.
-  def collectEverywhere(self):
-    return itertools.chain.from_iterable(self.distributedChunks.collectEverywhere())
-
-  # A new MpiCollection, with each local collection containing all the elements
-  # in @self.
-  def broadcast(self):
-    return collectionFromLocal(self.comm(), self.collectEverywhere())
+    return self.mapChunks(_chunkLen).reduceEverywhere(0, operator.add)
 
   def mapChunks(self, f):
     return self.distributedChunks.mapChunks(f)
@@ -85,6 +81,9 @@ class MpiCollection(object):
 
   def comm(self):
     return self.distributedChunks.comm
+
+def _chunkLen(chunk):
+  return len(chunk) if type(chunk) == set or type(chunk) == list else CollectionUtils.iterlen(chunk)
 
 def collectionFromLocal(comm, localCollection):
   return MpiCollection(MpiChunks(comm, localCollection))

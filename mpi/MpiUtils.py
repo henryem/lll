@@ -6,7 +6,7 @@ import sys
 # machines.  Useful if we want to run a deterministic distributed job without
 # actually using the same seed on every machine.
 def reseed(comm, rand):
-  return np.random.RandomState(rand.randint(0, sys.maxint) + 53*comm.rank)
+  return np.random.RandomState(int((rand.randint(0, sys.maxint) + 53*comm.rank) % sys.maxint))
 
 # Return a new RandomState whose seed is a deterministic function of @seed
 # and of @idx.  Useful for generating a range of random values that does not
@@ -14,7 +14,7 @@ def reseed(comm, rand):
 #   seed = rand.randint()
 #   makeRange(10).map(lambda item: makeRandForItem(seed, item))
 def makeRandForItem(seed, idx):
-  return np.random.RandomState(seed + 59*idx)
+  return np.random.RandomState(int((seed + 7*idx) % sys.maxint))
 
 # Execute some computation embodied in @thunk on the master, or return None
 # on slaves.  This is just a convenience method for this common pattern in MPI
