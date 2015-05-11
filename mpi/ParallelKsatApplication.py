@@ -13,18 +13,21 @@ def parseArgs():
                      help='a Python expression yielding the KsatGenerator to run')
   parser.add_argument('--solver', action='store',
                      help='a Python expression yielding the MpiKsatSolver to use')
-  parser.add_argument('--seed', action='store', default=None, type=int,
-                     help='the random seed to use')
+  parser.add_argument('--problemSeed', action='store', default=None, type=int,
+                     help='the random seed to use when generating the problem')
+  parser.add_argument('--solverSeed', action='store', default=None, type=int,
+                     help='the random seed to use when solving the problem')
   return parser.parse_args()
 
 def run():
   args = parseArgs()
   comm = MPI.COMM_WORLD
-  rand = np.random.RandomState(args.seed if args.seed is not None else None)
-  problem = eval(args.generator).generate(comm, rand)
+  problemRand = np.random.RandomState(args.problemSeed if args.problemSeed is not None else None)
+  problem = eval(args.generator).generate(comm, problemRand)
   solver = eval(args.solver)
-  
-  solution = solver.solve(rand, problem)
+
+  solverRand = np.random.RandomState(args.solverSeed if args.solverSeed is not None else None)
+  solution = solver.solve(solverRand, problem)
   
   if comm.rank == 0:
     print "Finished running solver %s; found %s" % (args.solver, solution)

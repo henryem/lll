@@ -5,6 +5,10 @@ import CollectionUtils
 from MpiChunks import MpiChunks
 from MpiUtils import onMaster
 
+#FIXME: The collections API evolved organically and is fairly broken.  There
+# should be a proper inheritance hierarchy, with everything inheriting from
+# MpiCollection.
+
 # A simple distributed collection in MPI.  Each processor has its own
 # subcollection.  The implementation follows the MPMD model of MPI.  The
 # programmer should populate the local part of the collection with local
@@ -15,20 +19,24 @@ from MpiUtils import onMaster
 # data.
 # 
 # Due to the simplicity of this implementation, there are many caveats:
-#  - Currently none of the operations on this collection are lazy.
+#  - Some of the operations on this collection are lazy, and other are not.
+#    Check the implementation before relying on a particular behavior.  
+#    reified() can be used to get a materialized copy of the collection.
 #  - It is assumed that no operations on this collection change its
-#    partitioning.  Explicit repartitioning could be supported.
+#    partitioning.  Explicit partitioning could be supported.
 class MpiCollection(object):
   #FIXME
-  def __init__(self, distributedChunks):#, partitioner):
+  def __init__(self, distributedChunks):
     self.distributedChunks = distributedChunks
-    # self.partitioner = partitioner
   
   def map(self, f):
-    return MpiCollection(self.mapChunks(lambda chunk: [f(elt) for elt in chunk]))#, self.partitioner)
+    return MpiCollection(self.mapChunks(lambda chunk: (f(elt) for elt in chunk)))
   
   def filter(self, pred):
-    return MpiCollection(self.mapChunks(lambda chunk: [elt for elt in chunk if pred(elt)]))#, self.partitioner)
+    return MpiCollection(self.mapChunks(lambda chunk: (elt for elt in chunk if pred(elt))))
+  
+  def reified(self):
+    return MpiCollection(self.mapChunks(list))
   
   # Should be called on all processors; will return None on all but processor
   # 0.
@@ -54,12 +62,13 @@ class MpiCollection(object):
   def collectEverywhere(self):
     return itertools.chain.from_iterable(self.distributedChunks.collectEverywhere())
 
-  def mapChunks(self, f):
-    return self.distributedChunks.mapChunks(f)#, self.partitioner)
+  # A new MpiCollection, with each local collection containing all the elements
+  # in @self.
+  def broadcast(self):
+    return collectionFromLocal(self.comm(), self.collectEverywhere())
 
-  #FIXME
-  # def partitionOf(self, elt):
-  #   return self.partitioner.apply(elt)
+  def mapChunks(self, f):
+    return self.distributedChunks.mapChunks(f)
 
   def localElements(self):
     return self.distributedChunks.localChunk
@@ -67,7 +76,12 @@ class MpiCollection(object):
   # Valid only on a collection of pairs with unique keys.  No warning will be
   # given if the keys are not unique.
   def toDict(self):
-    return MpiDict(self.mapChunks(lambda chunk: dict(chunk)))
+    return MpiDict(self.mapChunks(dict))
+
+  # Valid only on a collection with unique elements.  No warning will be given
+  # if the elements are not unique.
+  def toSet(self):
+    return MpiSet(self.mapChunks(set))
 
   def comm(self):
     return self.distributedChunks.comm
@@ -82,18 +96,10 @@ def makeRange(comm, numElements):
   numLocalElements = partitioning[localProcIdx]
   localStartIdx = sum(partitioning[0:localProcIdx])
   localElements = range(localStartIdx, localStartIdx+numLocalElements)
-  # partitioner = Partitioner(Utils.makeEvenPartitioner(numElements, numProcessors))
-  return collectionFromLocal(comm, localElements)#, partitioner)
+  return collectionFromLocal(comm, localElements)
 
-def makeEmpty(comm):#, partitioner):
-  return collectionFromLocal(comm, [])#, partitioner)
-
-# class Partitioner(object):
-#   def __init__(self, partitionFunc):
-#     self.partitionFunc = partitionFunc
-#
-#   def apply(self, elt):
-#     self.partitionFunc(elt)
+def makeEmpty(comm):
+  return collectionFromLocal(comm, [])
 
 
 # A distributed dictionary.  Currently only supports local lookups.
@@ -138,6 +144,10 @@ class MpiSet(object):
   
   def toCollection(self):
     return MpiCollection(self.setChunks)
+  
+  def collectEverywhere(self):
+    sets = self.setChunks.collectEverywhere()
+    return CollectionUtils.union_update(sets)
 
 def setFromLocal(comm, localSet):
   return MpiSet(MpiChunks(comm, localSet))

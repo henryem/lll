@@ -1,6 +1,8 @@
 import itertools
 
+import CollectionUtils
 import SetUtils
+import MpiCollection
 
 # A distributed undirected graph.  Nodes are simply integer IDs.  Nodes are 
 # distributed, and each node knows its neighbors, some of which may reside
@@ -12,20 +14,25 @@ class Graph(object):
   def __init__(self):
     pass
   
+  def comm(self):
+    raise NotImplementedError()
+  
   def nodesIterator(self):
-    pass
+    raise NotImplementedError()
   
-  def nodesSet(self):
-    pass
+  def neighborsIterator(self, node):
+    raise NotImplementedError()
   
-  def localNeighbors(self, node):
-    pass
+  def filter(self, f):
+    return LazySubgraph(self, f)
   
-  def inducedSubgraphPlusFringe(self, nodes, fringe):
-    return LazyFringedSubgraph(self, nodes, fringe)
+  def sizeEverywhere(self):
+    return self.nodesIterator().sizeEverywhere()
   
-  def inducedSubgraph(self, nodes):
-    return LazySubgraph(self, nodes)
+  def maxDegreeEverywhere(self):
+    return (self.nodesIterator()
+      .map(lambda node: CollectionUtils.iterlen(self.neighborsIterator(node)))
+      .reduceEverywhere(0, max))
   
 
 # A graph composed of a list of nodes distributed across machines, plus the
@@ -42,54 +49,33 @@ class ConcreteGraph(Graph):
     return self.nodesV.comm()
   
   def nodesIterator(self):
-    return self.nodesV
-  
-  def nodesSet(self):
-    return self.nodesV
-  
-  def localNeighbors(self, node):
-    #TODO: May be slow.  Should be O(#neighbors).
-    return self.neighborsV[node] & self.nodesSet()
+    return self.nodesV.toCollection()
+
+  def neighborsIterator(self, node):
+    return self.neighborsV[node]
 
 def graphFromLocal(comm, nodes, neighbors):
   return ConcreteGraph(MpiCollection.setFromLocal(comm, nodes), MpiCollection.dictFromLocal(comm, neighbors))
 
-class LazyFringedSubgraph(Graph):
-  def __init__(self, supergraph, nodeSubset, fringe):
-    self.supergraph = supergraph
-    #FIXME: May need to reify this.
-    self.nodeSubset = nodeSubset
-    self.fringe = fringe
-    super(LazyFringedSubgraph, self).__init__()
-  
-  def comm(self):
-    return self.supergraph.comm()
-  
-  def nodesIterator(self):
-    return collectionFromLocal(self.comm(), itertools.chain(self.nodeSubset.localSet(), self.fringe.localSet()))
 
-  def nodesSet(self):
-    #FIXME: Very inefficient to do this many times.
-    return collectionFromLocal(self.comm(), self.nodeSubset.localSet() | self.fringe.localSet())
-  
-  def localNeighbors(self, node):
-    return self.supergraph.localNeighbors(node) & self.nodesSet()
-
+# The subgraph induced by a subset of nodes determined by a filter function.  
+# That is, this graph includes nodes that pass @f and edges between those nodes 
+# that were originally present in supergraph.
 class LazySubgraph(Graph):
-  def __init__(self, supergraph, nodeSubset):
+  def __init__(self, supergraph, f):
     self.supergraph = supergraph
-    #FIXME: May need to reify this.
-    self.nodeSubset = nodeSubset
+    self.f = f
     super(LazySubgraph, self).__init__()
   
   def comm(self):
     return self.supergraph.comm()
   
   def nodesIterator(self):
-    return self.nodeSubset
-
-  def nodesSet(self):
-    return self.nodeSubset
+    return self.supergraph.nodesIterator().filter(self.f)
   
-  def localNeighbors(self, node):
-    return self.supergraph.localNeighbors(node) & self.nodesSet()
+  def neighborsIterator(self, node):
+    return (neighbor for neighbor in self.supergraph.neighborsIterator(node) if self.f(neighbor))
+  
+  def filter(self, furtherFilterFunc):
+    # Perhaps a more efficient implementation than the default.
+    return LazySubgraph(self, lambda node: self.f(node) and furtherFilterFunc(node))

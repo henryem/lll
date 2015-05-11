@@ -8,6 +8,14 @@ import sys
 def reseed(comm, rand):
   return np.random.RandomState(rand.randint(0, sys.maxint) + 53*comm.rank)
 
+# Return a new RandomState whose seed is a deterministic function of @seed
+# and of @idx.  Useful for generating a range of random values that does not
+# change when the partitioning changes, e.g.:
+#   seed = rand.randint()
+#   makeRange(10).map(lambda item: makeRandForItem(seed, item))
+def makeRandForItem(seed, idx):
+  return np.random.RandomState(seed + 59*idx)
+
 # Execute some computation embodied in @thunk on the master, or return None
 # on slaves.  This is just a convenience method for this common pattern in MPI
 # code.  (For example, MpiCollection.collect() will only collect on the master,

@@ -19,7 +19,7 @@ class KsatAssignment(object):
     return sum(2**i if value else 0 for i, value in enumerate(self.values))
 
   def __repr__(self):
-    return "".join(itertools.imap(str, self.values))
+    return "".join((str(value) for value in self.values))
 
 def unpack(binaryAssignment, n):
   assignment = emptyKsatAssignment(n)

@@ -21,6 +21,7 @@ class SatClause(object):
     return itertools.izip(self.literals, self.signs)
   
   def sharesLiteral(self, other):
+    #TODO: Could cache this, if it is expensive.
     otherLiterals = set(other.literals)
     return any(ownLiteral in otherLiterals for ownLiteral in self.literals)
 
@@ -31,31 +32,25 @@ def randomSatClause(k, numVariables, rand):
   return SatClause(literals, signs)
 
 
+class BroadcastKsatProblem(object):
+  def __init__(self, k, numVariables, clausesByIdx, localClauseIndices):
+    self.k = k
+    self.numVariables = numVariables
+    self.clausesByIdx = clausesByIdx
+    self.localClauseIndices = localClauseIndices
+  
+  def toDependencyGraph(self, comm):
+    def findNeighborsIndices(nodeIdx, node):
+      return set(neighborIdx for neighborIdx, neighbor in self.clausesByIdx.items() if nodeIdx != neighborIdx and node.sharesLiteral(neighbor))
+    neighborsOfLocalNodes = {localNodeIdx: findNeighborsIndices(localNodeIdx, self.clausesByIdx[localNodeIdx]) for localNodeIdx in self.localClauseIndices}
+    return MpiGraph.graphFromLocal(comm, self.localClauseIndices, neighborsOfLocalNodes)
+
 # A distributed k-SAT problem.
 class MpiKsatProblem(object):
   def __init__(self, k, numVariables, distributedClausesV):
     self.k = k
     self.numVariables = numVariables
     self.distributedClausesV = distributedClausesV
-  
-  def toDependencyGraph(self):
-    # We assume the number of nodes is small; in that case, the most
-    # communication-efficient way to build the graph is to broadcast the nodes 
-    # and compute edges everywhere.
-    localNodes = self.localClausesByIdx()
-    allNodesByIdx = self.distributedClauses().values().collectEverywhere()
-    
-    def findNeighborsIndices(node):
-      set(neighborIdx for neighborIdx, neighbor in enumerate(allNodesByIdx) if node.sharesLiteral(neighbor))
-    
-    #TODO: Could be more efficient ways to do this.  For example, we could find 
-    # edges by shared variable rather than by examining all pairs of nodes.
-    neighborsOfLocalNodes = {localNodeIdx: findNeighborsIndices(localNode) for localNodeIdx, localNode in localNodes}
-    #TODO: Do we need the reverse edges too?  This won't include edges
-    # like (nonLocalNeighborIdx, localNodeIdx).  For now it seems we don't
-    # need the edges at all, only the neighbor sets.
-    #localEdges = CollectionUtils.union(set((localNodeIdx, neighborIdx) for neighborIdx in neighborIndices) for localNodeIdx, neighborIndices in neighborsOfLocalNodes)
-    return MpiGraph.graphFromLocal(set(localNodes.keys()), neighborsOfLocalNodes)
   
   def comm(self):
     return self.distributedClausesV.comm()
@@ -69,6 +64,10 @@ class MpiKsatProblem(object):
   def localClausesByIdx(self):
     return self.distributedClausesV.localDict()
   
+  def toBroadcast(self):
+    allClausesByIdx = self.distributedClausesV.collectEverywhere()
+    return BroadcastKsatProblem(self.k, self.numVariables, allClausesByIdx, self.distributedClausesV.localDict().keys())
+  
   def __repr__(self):
     return "[%d] %s" % (
       self.comm().rank,
@@ -79,7 +78,7 @@ class KsatGenerator(object):
     pass
   
   def generate(self, comm, rand):
-    pass
+    raise NotImplementedError()
 
 class RandomMpiKsatGenerator(KsatGenerator):
   def __init__(self, k, numVariables, numClauses):
@@ -88,11 +87,9 @@ class RandomMpiKsatGenerator(KsatGenerator):
     self.numClauses = numClauses
   
   def generate(self, comm, rand):
-    # It is assumed that @rand is identical on each machine.  To avoid actually
-    # generating the same set of clauses on each machine, we make the seed a
-    # deterministic function of the machine ID.
-    newRand = MpiUtils.reseed(comm, rand)
+    # It is assumed that @rand is identical on each machine.
+    startingSeed = Utils.randLargeInt(rand)
     clauses = (MpiCollection.makeRange(comm, self.numClauses)
-      .map(lambda idx: (idx, randomSatClause(self.k, self.numVariables, newRand)))
+      .map(lambda idx: (idx, randomSatClause(self.k, self.numVariables, MpiUtils.makeRandForItem(startingSeed, idx))))
       .toDict())
     return MpiKsatProblem(self.k, self.numVariables, clauses)

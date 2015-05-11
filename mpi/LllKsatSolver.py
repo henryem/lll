@@ -2,16 +2,10 @@ from MpiKsatSolver import MpiKsatSolver
 from MpiUtils import onMaster
 import IndependentSetFinder
 import MpiGraph
+import MpiCollection
 import MpiKsatAssignment
 import KsatSolution
 import Utils
-
-# The set of indices of clauses in @problem that are unsatisfied under
-# @assignment.
-def unsatisfiedClauses(problem, assignment):
-  localClausesByIdx = problem.localClausesByIdx()
-  localAssignment = assignment.localAssignment()
-  return setFromLocal(set(clauseIdx for clauseIdx, clause in problem.localClausesByIdx() if localAssignment.satisfiesClause(clause)))
 
 # A class of LLL algorithms for solving distributed k-SAT problems.  Solvers
 # are parameterized by a method for finding independent sets in clause
@@ -24,23 +18,21 @@ class LllKsatSolver(MpiKsatSolver):
   def solve(self, rand, problem):
     comm = problem.comm()
     n = problem.numVariables
-    graph = problem.toDependencyGraph()
-    currentAssignment = MpiKsatAssignment.uniformRandomMpiKsatAssignment(rand, n)
+    broadcastProblem = problem.toBroadcast()
+    graph = broadcastProblem.toDependencyGraph(comm)
+    currentAssignment = MpiKsatAssignment.uniformRandomMpiKsatAssignment(comm, rand, n)
     maxNumIterations = self.independentSetFinder.calculateNumIterations(problem, graph)
-    independentSetFunc = self.independentSetFunc.buildFinderFunc(rand, graph)
+    if comm.rank == 0: print "Solving problem %s... with %s iterations." % (problem, maxNumIterations)
+    independentSetFunc = self.independentSetFinder.buildFinderFunc(rand, graph)
     for i in xrange(maxNumIterations):
       # At the beginning of each iteration of this loop, @currentAssignment
       # is consistent across processors.
-      unsatisfiedClauses = unsatisfiedClauses(problem, currentAssignment)
-      if unsatisfiedClauses.toCollection().sizeEverywhere() == 0:
-        return onMaster(comm, lambda : KsatSolution.success(currentAssignment.localAssignment()))
-      unsatSubgraph = graph.inducedSubgraph(unsatisfiedClauses)
+      localAssignment = currentAssignment.localAssignment()
+      unsatSubgraph = graph.filter(lambda clauseIdx: not localAssignment.satisfiesClause(broadcastProblem.clausesByIdx[clauseIdx]))
       localIndependentSet = independentSetFunc(unsatSubgraph)
-      localClausesByIdx = problem.localClausesByIdx()
-      #FIXME: Weird initialization.
-      locallyModifiedVariables = MpiDict(comm, MpiChunks(comm, {}))
-      for clauseIdx in localIndependentSet:
-        clause = localClausesByIdx[clauseIdx]
+      locallyModifiedVariables = MpiCollection.dictFromLocal(comm, {})
+      for clauseIdx in localIndependentSet.localElements():
+        clause = broadcastProblem.clausesByIdx[clauseIdx]
         #TODO: Only communicate modified variables to machines that need them.
         # For now we assume all machines need to see all modified variables,
         # which is true when m*k/p >> n (i.e. when the number of literals per
@@ -50,8 +42,10 @@ class LllKsatSolver(MpiKsatSolver):
       #TODO: Probably inefficient serialization here.  Should serialize as
       # a list of ints and a list of bools.
       allModifiedVariables = locallyModifiedVariables.collectEverywhere()
+      if len(allModifiedVariables) == 0:
+        print "Finished after %d iterations." % i
+        return onMaster(comm, lambda : KsatSolution.success(localAssignment))
       # Update modified variables from everywhere.
-      localAssignment = currentAssignment.localAssignment()
-      for var, value in allModifiedVariables:
-        localAssignment[var] = value
+      for var, value in allModifiedVariables.items():
+        localAssignment.values[var] = value
     return onMaster(comm, lambda : KsatSolution.failure())
