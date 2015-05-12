@@ -152,8 +152,8 @@ class SamplingProcessParallelSolver(MpiKsatSolver):
     def buildSolution():
       numSatisfyingAssignments, arbitrarySatisfyingAssignment = resultStatistics
       #print "%d out of %d satisfying assignments." % (numSatisfyingAssignments, numSamples)
-      if numSatisfyingAssignments*1.0/numSamples <= 0.0002 and numSatisfyingAssignments != 0:
-        print "problem difficulty = " + str(numSatisfyingAssignments*1.0/numSamples)
+      #if numSatisfyingAssignments*1.0/numSamples <= 0.0002 and numSatisfyingAssignments != 0:
+      print "problem difficulty = " + str(numSatisfyingAssignments*1.0/numSamples)
       
       if arbitrarySatisfyingAssignment > -1:
         return KsatSolution.success(arbitrarySatisfyingAssignment)
