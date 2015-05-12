@@ -1,13 +1,13 @@
 
 
-for k in 8
+for n in 256
 do
-    for m in 1280
+    for m in 8 32 128 512
     do
-	echo "k=$k m=$m"
-        for n in 32
+        for k in 2 3 4 8 16
         do
-        	for run in {1..10}
+        echo "k=$k m=$m n=$n"
+        	for run in 1
         	do
             	./run ./Applications/KsatTests.jl -s "ParallelLllKsatSolver(SimpleChungIndependentSetFinder())" -d "RandomKsatGenerator($k,$n,$m)" -e 77 -l $run
         	done
