@@ -1,0 +1,9 @@
+#!/bin/csh
+#PBS -l mppwidth=24
+#PBS -l walltime=5:00
+#PBS -q debug
+#PBS -j oe
+cd $PBS_O_WORKDIR
+module load python
+module load mpi4py
+aprun -n 24 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(8, 100, 1800)" --solver "ExhaustiveMpiKsatSolver.SamplingProcessParallelSolver(10000)" --problemSeed 0 --solverSeed 13
