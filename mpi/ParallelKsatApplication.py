@@ -21,27 +21,21 @@ def parseArgs():
   return parser.parse_args()
 
 def run():
-  print "0"
   args = parseArgs()
-  print "1"
   comm = MPI.COMM_WORLD
-  print "2"
   problemRand = np.random.RandomState(args.problemSeed if args.problemSeed is not None else None)
-  print "3"
   problem = eval(args.generator).generate(comm, problemRand)
-  print "4"
   solver = eval(args.solver)
-  print "5"
 
   #NOTE: The solver will perform differently for different numbers of machines,
   # even if the randoms seed is the same.
   solverRand = np.random.RandomState(args.solverSeed if args.solverSeed is not None else None)
-  print "6"
+
 
   wholeSolveStartTime = datetime.datetime.now()
-  print "7"
+
   solution = solver.solve(solverRand, problem)
-  print "8"
+
   wholeSolveEndTime = datetime.datetime.now()
 
   #if comm.rank == 0:
