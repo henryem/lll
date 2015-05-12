@@ -1,12 +1,21 @@
 \documentclass{article}
 \usepackage{amsmath, amssymb}
 \usepackage[retainorgcmds]{IEEEtrantools}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{filecontents}
 \usepackage{hyperref}
 \usepackage{graphicx}
 \author{Derek Kuo, Henry Milner}
 \title{CS267 Final Project: An Empirical Investigation of the Algorithmic Lovász Local Lemma}
 \date{5/11/15}
+
+% Some macros specific to this paper.
+\newcommand{\ksat}{\texttt{k-SAT}}
+
+\newcommand{\polylog}{\text{polylog}}
+
+\newcommand{\lovasz}{Lov\'{a}sz}
 
 % Some functions for general use.
 
@@ -190,6 +199,7 @@
   year={2010},
   publisher={Wiley Online Library}
 }
+
 @article{gomes2008satisfiability,
   title={Satisfiability solvers},
   author={Gomes, Carla P and Kautz, Henry and Sabharwal, Ashish and Selman, Bart},
@@ -212,6 +222,13 @@
   journal={SAT COMPETITION 2014},
   pages={81}
 }
+
+@article{belov2014sat,
+  title={SAT COMPETITION 2014},
+  author={Belov, Anton and Diepold, Daniel and Heule, Marijn JH and J{\"a}rvisalo, Matti},
+  year={2014}
+}
+
 \end{filecontents}
 \immediate\write18{bibtex \jobname}
 
@@ -219,11 +236,67 @@
 \maketitle
 
 \begin{abstract}
-The algorithmic Lovasz Local Lemma (LLL) is a recent-developed meta-algorithm for solving certain instances of hard combinatorial problems.  In theory, LLL algorithms can be applied whenever a problem can be decomposed into smaller subproblems and the dependencies among subproblems are somewhat sparse.  For example, a k-SAT problem can be decomposed into the problem of satisfying each of its clauses, and LLL algorithms can be useful in solving k-SAT problems whose clauses do not share literals with too many other clauses.  The seminal paper in the field is by Moser and Tardos \cite{moser2010constructive} in 2010.  For many problems, LLL algorithms theoretically lend themselves well to parallelism, as demonstrated in \cite{moser2010constructive} and expanded upon in more recent work \cite{chung2014distributed,haeupler2011new}.  However, we are aware of no published empirical tests of the efficiency of LLL algorithms in practice.  In this paper, we give practical implementations of parallel LLL algorithms for k-SAT, and we investigate their performance.
+The algorithmic \lovasz~ Local Lemma (LLL) is a recent-developed meta-algorithm for solving certain instances of hard combinatorial problems.  In theory, LLL algorithms can be applied whenever a problem can be decomposed into smaller subproblems and the dependencies among subproblems are, in a certain sense, somewhat sparse.  For example, a \ksat problem can be decomposed into the problem of satisfying each of its clauses, and LLL algorithms can be useful in solving \ksat problems whose clauses do not share literals with too many other clauses.  The seminal paper in the field is by Moser and Tardos \cite{moser2010constructive} in 2010.  For many problems, LLL algorithms theoretically lend themselves well to parallelism, as demonstrated in \cite{moser2010constructive} and expanded upon in more recent work \cite{chung2014distributed,haeupler2011new} that focuses in particular on distributed algorithms.  However, we are aware of no published empirical tests of the efficiency of LLL algorithms in practice; the existing literature focuses entirely on proving results about their asymptotic performance.  In this paper, we give concrete implementations of serial and distributed LLL algorithms for \ksat, and we give a preliminary evaluation of their performance.
+\end{abstract}
 
 \section{Introduction}
+\label{sec:intro}
+In 1975, Erd\"{o}s and \lovasz~ \cite{erdos1975problems} developed a technique, now called the \lovasz~ Local Lemma (LLL), for proving the existence of solutions to combinatorial problems.  The technique is a ``probabilistic method'': Given a set of events that we want to avoid (for example, each event could correspond to the violations of a problem constraint), it is proved that there is a strictly positive probability that none of these events happen under a random potential solution drawn from a suitable distribution on potential solutions.  The main precondition of the LLL is that the statistical dependencies among events are \emph{sparse}, with the sparsity being of the same magnitude as the marginal probability of each single event being unsatisfied under the sampling distribution.  We will discuss the technique later in more detail.
 
-\subsection{This paper}
+For many years the LLL was viewed as a tool useful only in proofs.  In 1991, Beck \cite{beck1991algorithmic} found randomized algorithms for several combinatorial problems that actually \emph{find} solutions, and which finish in expected polynomial time under conditions similar to the preconditions of the LLL.  The CS theory community continued to improve on these results, until in 2010 Moser and Tardos \cite{moser2010constructive} published a meta-algorithm for solving, in expected polynomial time, any combinatorial problem that satisfies the LLL preconditions.
+
+An interesting aspect of the Moser-Tardos meta-algorithm is that it can be parallelized.  Moser and Tardos analyzed a simple parallel version of their algorithm in their original paper.  More recently, Chung et al \cite{chung2014distributed} and Haeupler et al \cite{haeupler2011new} developed algorithms requiring less communication in a distributed environment.  All of these algorithms finish in $\tilde{O}(1)$ time given a number of processors that grows linearly with the problem description length.  However, the big-$\tilde{O}$ hides logarithmic factors and potentially large constants.
+
+Though they seem promising, to our knowledge neither the Moser-Tardos meta-algorithm nor its parallel variants have ever been tested empirically.  Several questions of practical interest are left open by the existing literature:
+\begin{enumerate}
+  \item When the preconditions of the LLL are satisfied, does the Moser-Tardos meta-algorithm actually run quickly, or does the analysis hide large constant factors?
+  \item Under those conditions, is the Moser-Tardos meta-algorithm competitive with existing solvers for hard combinatorial problems?
+  \item Are there interesting and difficult problems that satisfy the preconditions of the LLL?
+  \item Are the preconditions of the LLL actually necessary in practice for the Moser-Tardos meta-algorithm to work efficiently?  How quickly does its performance degrade as the preconditions become more unsatisfied?
+  \item Are the parallel LLL algorithms useful in practice?
+\end{enumerate}
+
+In this paper, we study the last question: Are the parallel LLL algorithms useful in practice?  In particular, we consider algorithms designed for \emph{distributed-memory} systems, though shared-memory parallelism and GPUs would both be interesting future directions.  In order to answer our question it will be necessary to give partial answers to the others, but we leave more thorough investigations for future work.
+
+To study applications of the algorithmic LLL, we must choose combinatorial problems to solve.  We focus on \ksat.  In \ksat, we are given $n$ boolean variables and $m$ disjunctive (``OR'') clauses of $k$ possibly-negated variables each, and we must find an assignment of the variables that satisfies all of the clauses.  The decision version of \ksat is NP-complete, but this does not necessarily mean that instances of practical importance (or, possibly, all but a small number of worst-case instances) are hard, and there is a long and ongoing history of work on heuristic search methods for the problem.  In fact, there is an annual competition for SAT solvers \cite{belov2014sat}.  (Our benchmarks will be based on the guidelines in that competition.)
+
+\subsection{This Paper}
+In section \ref{sec:alll}, we discuss in detail the Moser-Tardos meta-algorithm.  In section \ref{sec:implementation}, we describe our implementation of particular forms of the algorithm and the design choices we made.  In section \ref{sec:benchmarks} we comment on the design of benchmarks, which is nontrivial for \ksat.  In section \ref{sec:scaling}, we present scaling results for our chosen benchmarks.  We conclude in section \ref{sec:conclusion} with a discussion of our results and directions for future work.
+
+\section{The Algorithmic \lovasz~ Local Lemma}
+\label{sec:alll}
+
+The basic setup for LLL algorithms is as follows: Let $\mathcal{A} = \{A_1, \cdots, A_m\} \in \{0,1\}^m$ be a set of discrete variables (which we take to be binary for sake of exposition), and let $\mathcal{E} = \{E_1, \cdots, E_n\}$ be a set of functions $\{0,1\}^m \to \{0,1\}$ mapping the variables to truth values.  The $E_i$ are called ``events,'' and $E_i$ is said to ``happen'' under some assignment to $\mathcal{A}$ if $E_i(\mathcal{A}) = 1$.  We would like to find an assignment of the variables so that none of the events happen.
+
+This framework encompasses many constraint satisfaction problems.  For example, we can encode graph coloring as follows: the variables are binary encodings of the color assignments to vertices, and event $E_{ij}$ happens if vertices $i$ and $j$ are assigned the same color.  Then if we find an assignment of the variables for which none of the events happen, we have found a graph coloring.  Encoding \ksat is even more straightforward: the $A_i$ are the problem variables, and each $E_i$ corresponds to a clause involving $k$ variables.  $E_i$ happens if the corresponding clause is false, and an assignment solves the problem if none of the events happen.  In \ksat, each event $E_i$ is a function of only a smaller subset of the variables.  We denote that subset of $\mathcal{A}$ by $\operatorname{vbl}(E_i)$.  LLL algorithms typically need $|\operatorname{vbl}(E_i)| << |\mathcal{A}|$.
+
+The simplest LLL algorithm is \emph{extremely} simple.  It is Algorithm \ref{alg:simple-lll} below.
+
+\begin{algorithm}[H]
+\label{alg:simple-lll}
+\begin{algorithmic}
+\State Initialize all the $A_i$ as IID samples from a uniform Bernoulli distribution.
+\While{Any of the $E_j$ happen under the current value of $\mathcal{A}$}
+  \State Let $E_j$ be an arbitrary event that happens under $\mathcal{A}$.
+  \State Reample each $A_i \in \operatorname{vlb}(E_j)$ IID uniform Bernoulli.
+\EndWhile
+\end{algorithmic}
+\caption{The simplest LLL algorithm.}
+\end{algorithm}
+
+Of course, the decision version of \ksat is NP-hard, so we would not expect this algorithm to work for all instances.  Moser and Tardos \cite{moser2010constructive} prove that it runs in expected polynomial time when the events are not individually too hard to satisfy with random assignment and when there are not too many dependencies among the events.  Concretely:
+\begin{enumerate}
+  \item Let $p$ be the maximum probability that any single event happens under a random assignment to all the variables.  (In \ksat, this is $2^{-k}$, since a clause is unsatisfied only if all of its k variables are assigned incorrectly, and the single variable assignments happen independently with probability $1/2$.)
+  \item Construct an undirected dependency graph for the events, in which there is an edge between $E_j$ and $E_k$ if they are statistically dependent under random assignment to the $A_i$.  In \ksat, there is an edge between clauses $E_j$ and $E_k$ if they share any variable.  Let $d$ be the maximum degree of events in this graph.
+\end{enumerate}
+Moser and Tardos prove that the above algorithm finishes in expected polynomial time if $e p d < 1$, where $e$ is the base of the natural logarithm.
+
+For example, a \ksat problem satisfies this condition if each clause shares variables with no more than $\frac{2^k}{e}$ other clauses.  If we generate a random \ksat instance with $m$ variables and $n$ clauses, the probability that two clauses share a variable is approximately $\frac{k^2}{m}$, so the expected value of $d$ is approximately $\frac{n k^2}{m}$.  In that case the proof by Moser and Tardos applies if $n$ is less than $\frac{2^k m}{k^2 e}$.  For comparison, the maximum number of clauses in a \ksat instance is $2^k {m \choose k}$.  It is known that random 3-SAT instances are hardest when $n \approxeq 4.26 m$ \cite{gomes2008satisfiability}, so these are relatively easy instances.  In fact, for $k = 3$ these instances do not even use all the variables, since $\frac{2^3 m}{3^2 e} = \frac{8}{9e} < 1/3$.
+
+The event dependency graph is useful for seeing an easy way to parallelize the simple LLL algorithm.  Notice that if independent events $E_j$ and $E_k$ happen under the current assignment to $\mathcal{A}$, and event $E_j$'s variables are chosen for resampling, then (by independence) $E_k$ will still happen after the resampling, so the next iteration could resample its variables.  This means we can resample variables depended-on by any independent set of events that currently happen, and this resampling can be done in parallel.  The difficult part is finding a large independent set and communicating variable assignments.  Chung et al \cite{chung2014distributed} and Srinivasan et al \cite{haeupler2011new} give alternative parallel LLL algorithms (similar to Algorithm \ref{alg:simple-lll}, but somewhat more complicated) that can be run more efficiently on distributed computers.
+
+Last, it should be noted that the simple LLL algorithm is quite similar to stochastic local search heuristics for \ksat that have been known for many years.  It would be surprising if it performed much better than those older methods, or the more sophisticated heuristics that have followed them.  So we expect to find negative results.  The parallel LLL algorithms are less obvious, so there is more hope that they outperform or outscale existing algorithms on instances that satisfy Moser's condition for efficiency.
+
 
 \bibliographystyle{plain}
 \bibliography{\jobname}
