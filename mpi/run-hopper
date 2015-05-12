@@ -6,8 +6,4 @@
 cd $PBS_O_WORKDIR
 module load python
 module load mpi4py
-
-for solverSeed in 57 26 38 12 97
-do
-	aprun -n 24 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(10, 10000, 10000)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 3 --solverSeed $solverSeed
-done
+aprun -n 24 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(8, 100, 1800)" --solver "ExhaustiveMpiKsatSolver.SamplingProcessParallelSolver(10000)" --problemSeed 0 --solverSeed 13

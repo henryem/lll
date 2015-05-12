@@ -7,7 +7,19 @@ cd $PBS_O_WORKDIR
 module load python
 module load mpi4py
 
-for solverSeed in 57 26 38 12 97
-do
-	aprun -n 24 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(10, 10000, 10000)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 3 --solverSeed $solverSeed
-done
+aprun -n 2 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(4, 12, 100)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 3 --solverSeed 10
+
+
+aprun -n 4 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(4, 50, 200)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 5 --solverSeed 10
+
+aprun -n 8 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(5, 100, 400)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 38 --solverSeed 10
+
+aprun -n 24 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(7, 120, 1200)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 57 --solverSeed 10
+
+aprun -n 25 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(7, 140, 1250)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 17 --solverSeed 10
+
+aprun -n 48 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(8, 1000, 2400)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 1 --solverSeed 10
+
+aprun -n 72 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(9, 30, 3600)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 3 --solverSeed 10
+
+aprun -n 96 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator(9, 50, 4800)" --solver "LllKsatSolver.LllKsatSolver(IndependentSetFinder.SimpleChungIndependentSetFinder())" --problemSeed 2 --solverSeed 10
