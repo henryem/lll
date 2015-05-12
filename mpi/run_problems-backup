@@ -1,0 +1,24 @@
+#!/bin/csh
+#PBS -l mppwidth=24
+#PBS -l walltime=5:00
+#PBS -q debug
+#PBS -j oe
+cd $PBS_O_WORKDIR
+module load python
+module load mpi4py
+
+for m in 10000
+do
+    for k in 10
+    do
+        for problem_seed in {1..10}
+        do
+        	for n in 10000
+        	do
+        		echo "k=$k m=$m n=$n problem_seed=$problem_seed"
+        		aprun -n 24 python ParallelKsatApplication.py --generator "MpiKsatProblem.RandomMpiKsatGenerator($k, $n, $m)" --solver "ExhaustiveMpiKsatSolver.SamplingProcessParallelSolver(10000)" --problemSeed $problem_seed --solverSeed 10
+        	done
+        done
+    done
+done
+
