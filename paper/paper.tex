@@ -195,6 +195,14 @@
   year={1991},
   organization={IEEE}
 }
+@article{peleg2000distributed,
+  title={Distributed computing},
+  author={Peleg, David},
+  journal={SIAM Monographs on discrete mathematics and applications},
+  volume={5},
+  year={2000},
+  publisher={Springer}
+}
 @inproceedings{steurer2010fast,
   title={Fast SDP algorithms for constraint satisfaction problems},
   author={Steurer, David},
@@ -300,12 +308,11 @@ LLL algorithms can be useful when a problem can be phrased as follows.  Let $\ma
 This framework encompasses many constraint satisfaction problems.  For example, we can encode graph coloring as follows: the variables are binary encodings of the color assignments to vertices, and event $E_{ij}$ happens if vertices $i$ and $j$ are assigned the same color.  Then if we find an assignment of the variables for which none of the events happen, we have found a graph coloring.  Encoding \ksat is even more straightforward: the $A_i$ are the problem variables, and each $E_i$ corresponds to a clause involving $k$ variables.  $E_i$ happens if the corresponding clause is false, and an assignment solves the problem if none of the events happen.  In \ksat, each event $E_i$ is a function of only a smaller subset of the variables (of size $k$), and it is functionally independent of the rest.  We denote that subset of $\mathcal{A}$ by $\operatorname{vbl}(E_i)$.  If we imagine randomly and independently determining the variable values, then $E_i$ is statistically dependent only on $\operatorname{vbl}(E_i)$.  LLL algorithms typically need $|\operatorname{vbl}(E_i)| << |\mathcal{A}|$.
 
 \subsection{The Moser-Tardos meta-algorithm}
-The simplest LLL algorithm, the Moser-Tardos meta-algorithm, is \emph{extremely} simple.  It is algorithm \ref{alg:mt-meta} below.  Its specialization to \ksat is algorithm \ref{alg:mt-ksat}.
-%FIXME: Fix numbering.
+The simplest LLL algorithm, the Moser-Tardos meta-algorithm, is \emph{extremely} simple.  It is algorithm 1 below.  Its specialization to \ksat is algorithm 2.
 
 \begin{algorithm}[H]
 \label{alg:mt-meta}
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \State Initialize all the $A_i$ as i.i.d. samples from a uniform Bernoulli distribution.
 \While{Any of the $E_j$ happen under the current value of $\mathcal{A}$}
   \State Let $E_j$ be an arbitrary event that happens under $\mathcal{A}$.
@@ -317,7 +324,7 @@ The simplest LLL algorithm, the Moser-Tardos meta-algorithm, is \emph{extremely}
 
 \begin{algorithm}[H]
 \label{alg:mt-ksat}
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \State Initialize all variables $V_i$ as i.i.d. samples from a uniform Bernoulli distribution.
 \While{Any clause is violated}
   \State Let $C_j$ be an arbitrary clause that is violated.
@@ -345,12 +352,12 @@ To make this concrete, it is useful to associate another graph with an LLL probl
   \label{fig:mt-undirected-example}
 \end{figure}
 
-Let $d$ be the maximum degree of events in the dependency graph for a problem instance.  And let $p$ be the maximum probability that any single event happens under a uniform random assignment to all the variables.  In \ksat, this is $2^{-k}$, since a disjunctive clause is unsatisfied only if all of its k variables are assigned incorrectly, and the single variable assignments happen independently with probability $1/2$.  Then Moser and Tardos prove that algorithm \ref{alg:mt-meta} finishes in expected polynomial time if $e p d < 1$, where $e$ is the base of the natural logarithm.  These are the same conditions under which the ordinary \lovasz Local Lemma guarantees the \emph{existence} of a solution.
+Let $d$ be the maximum degree of events in the dependency graph for a problem instance.  And let $p$ be the maximum probability that any single event happens under a uniform random assignment to all the variables.  In \ksat, $p = 2^{-k}$, since a disjunctive clause is unsatisfied only if all of its k variables are assigned incorrectly, and the single variable assignments happen independently with probability $1/2$.  Then Moser and Tardos prove that algorithm 1 finishes in expected polynomial time if $e p d < 1$, where $e$ is the base of the natural logarithm.  These are the same conditions under which the ordinary \lovasz Local Lemma guarantees the \emph{existence} of a solution.
 
-A \ksat problem satisfies this condition if each clause shares variables with no more than $\frac{2^k}{e}$ other clauses.  If we generate a random \ksat instance with $n$ variables and $m$ clauses (and random signs), the probability that two clauses share a variable is approximately $\frac{k^2}{n}$, so the expected degree of any node is approximately $\frac{m k^2}{n}$.  If we make the optimistic assumption that the maximum degree equals the expected degree, then the proof by Moser and Tardos applies if $m$ is less than $\frac{2^k n}{k^2 e}$.  For comparison, the maximum number of clauses in a \ksat instance is $2^k {n \choose k}$.  It is known that random 3-SAT instances are hardest when $m \approxeq 4.26 n$ \cite{gomes2008satisfiability}, so these are relatively easy instances.  In fact, for $k = 3$ these instances do not even use all the variables, since $\frac{2^3 m}{3^2 e} = \frac{8}{9e} < 1/3$.  For larger $k$, the instances for which the proof by Moser and Tardos applies can be much less trivial than that, but they can never meet the threshold, which is asymptotically $\log 2 2^k - \frac{1}{2}(1 + \log 2)$\cite{coja2014asymptotic}.  Of course, we should not expect to be able provably to solve hard instances of NP-complete problems in polynomial time!  We will provide empirical results for problems that are at varying degrees of proximity to the hardness threshold.
+A \ksat problem satisfies this condition if each clause shares variables with no more than $\frac{2^k}{e}$ other clauses.  For instance, if we generate a random \ksat instance with $n$ variables and $m$ clauses (and random signs), the probability that two clauses share a variable is approximately $\frac{k^2}{n}$, so the expected degree of any node is approximately $\frac{m k^2}{n}$.  If we make the optimistic assumption that the maximum degree equals the expected degree, then the proof by Moser and Tardos applies if $m$ is less than $\frac{2^k n}{k^2 e}$.  For comparison, the maximum number of clauses in a \ksat instance is $2^k {n \choose k}$.  It is known that random 3-SAT instances are hardest when $m \approxeq 4.26 n$ \cite{gomes2008satisfiability}, so these are relatively easy instances.  In fact, for $k = 3$ these instances do not even use all the variables, since $\frac{2^3 m}{3^2 e} = \frac{8}{9e} < 1/3$.  For larger $k$, the instances for which the proof by Moser and Tardos applies can be much less trivial than that, but they can never meet the threshold, which is asymptotically $\log 2 2^k - \frac{1}{2}(1 + \log 2)$\cite{coja2014asymptotic}.  Of course, we should not expect to be able provably to solve hard instances of NP-complete problems in polynomial time!  We will provide empirical results for problems that are at varying degrees of proximity to the hardness threshold.
 
 \subsection{Parallelizing Moser-Tardos}
-The event dependency graph is useful for seeing a way to parallelize algorithm \ref{alg:mt-meta}.  Notice that if independent events $E_j$ and $E_k$ happen under the current assignment to $\mathcal{A}$, and event $E_j$'s variables are chosen for resampling, then (by independence) $E_k$ will still happen after the resampling, so there exists a valid serial execution of the algorithm in which the next iteration resamples $E_k$'s variables.  This means we can resample variables depended-on by any independent set of events that currently happen, and this resampling can be done in parallel.  Figure \ref{fig:mt-independence-example} gives an example.
+The event dependency graph is useful for seeing a way to parallelize algorithm 1.  Notice that if independent events $E_j$ and $E_k$ happen under the current assignment to $\mathcal{A}$, and event $E_j$'s variables are chosen for resampling, then (by independence) $E_k$ will still happen after the resampling, so there exists a valid serial execution of the algorithm in which the next iteration resamples $E_k$'s variables.  This means we can resample variables depended-on by any independent set of events that currently happen, and this resampling can be done in parallel.  Figure \ref{fig:mt-independence-example} gives an example.
 
 \begin{figure}[ht]
   \includegraphics[scale=0.4]{figures/mt-independence-example.png}
@@ -360,9 +367,7 @@ The event dependency graph is useful for seeing a way to parallelize algorithm \
 
 The larger the independent set we can find, the more parallelism is available.  In fact, Moser and Tardos prove that the algorithm terminates in $O(\log(m))$ iterations -- that is, it has sub-linear computational depth -- if the variables of a \emph{maximal} independent set are resampled at each step.  (Note that the requirement is not for a \emph{maximum} independent set, finding which is itself an NP-complete problem, but merely an independent set that cannot be greedily extended.)  Since the set of events that happen changes on each iteration, it is necessary to find new independent sets on each iteration, so this is not a fixed cost.  In practice, this is a major bottleneck of the algorithm.  Moser and Tardos suggest using Luby's algorithm \cite{luby1986simple}.  In short, that algorithm grows an independent set by assigning random IDs to each node in the graph, then iteratively adding all remaining strict local minima to the independent set, and removing the added nodes and their neighbors.  It finds a maximal independent set using $O(\log m)$ rounds of communication and $O(m \log m)$ total work, in expectation and with high probability.  Chung et al \cite{chung2014distributed} and Srinivasan et al \cite{haeupler2011new} give alternative parallel LLL algorithms that can be run more efficiently on distributed computers.  These algorithms differ only in the methods they use to find independent sets; the requirement for a maximal independent set is typically relaxed in some fashion.
 
-%FIXME: Mention LOCAL model?
-
-For our parallel code, we have implemented the so-called ``simple'' algorithm of Chung et al (algorithm 2 in \cite{chung2014distributed}) using some techniques suggested by Haeupler et al \cite{haeupler2011new}.  We call this algorithm \ref{alg:chung-simple}, and pseudocode is given below.
+For our parallel code, we have implemented the so-called ``simple'' algorithm of Chung et al (algorithm 2 in \cite{chung2014distributed}) using some techniques suggested by Haeupler et al \cite{haeupler2011new}.  We call this algorithm 3, and pseudocode is given below.
 
 \begin{algorithm}[H]
 \label{alg:chung-simple}
@@ -378,29 +383,36 @@ For our parallel code, we have implemented the so-called ``simple'' algorithm of
 \caption{The ``simple'' algorithm of Chung et al.  Here $\Gamma(j)$ is the set of neighbors of event $E_j$ in the dependency graph.}
 \end{algorithm}
 
-Algorithm \ref{alg:chung-simple} simply uses Luby's algorithm, but stops after a single iteration rather than continuing until a maximal independent set has been found.  Further, the random IDs are reused across iterations of algorithm 1.  We will see that these two modifications substantially reduce the communication requirements of the Moser-Tardos meta-algorithm.  The pseudocode does not address the parallelism or communication patterns used in the algorithm, which is the subject of section \ref{sec:implementation}.  It should be noted, however, that algorithm \ref{alg:chung-simple} is proven to run in polynomial time only when $e p d^2 < 1$, a stronger requirement.  Chung et al provide another algorithm with the same dependency on $d$ as the Moser-Tardos meta-algorithm (algorithm 3 in their paper), but it involves more communication than the simple algorithm.  We implemented only a serial version of it.
+Algorithm 3 simply uses Luby's algorithm, but stops after a single iteration rather than continuing until a maximal independent set has been found.  Further, the random IDs are reused across iterations of algorithm 1.  We will see that these two modifications substantially reduce the communication requirements of the Moser-Tardos meta-algorithm.  The pseudocode does not address the parallelism or communication patterns used in the algorithm, which is the subject of section \ref{sec:implementation}.  It should be noted, however, that algorithm 3 is proven to run in polynomial time only when $e p d^2 < 1$, a stronger requirement.  Chung et al provide another algorithm with the same dependency on $d$ as the Moser-Tardos meta-algorithm (algorithm 3 in their paper), but it involves more communication than the simple algorithm.  We implemented only a serial version of it.
 
 % Last, it should be noted that the simple LLL algorithm is quite similar to stochastic local search heuristics for \ksat that have been known for many years.  It would be surprising if it performed much better than those older methods, or the more sophisticated heuristics that have followed them.  So we expect to find negative results.  The parallel LLL algorithms are less obvious, so there is more hope that they outperform or outscale existing algorithms on instances that satisfy Moser's condition for efficiency.
 
 \section{Our Implementation}
 \label{sec:implementation}
-We have written Julia implementations of algorithms \ref{alg:mt-ksat} and \ref{alg:chung-simple}, and algorithm 3 in \cite{chung2014distributed}.  Each of these algorithms is a modification of the Moser-Tardos meta-algorithm with a particular way of finding independent sets.  Since there is potentially a tradeoff between the time spent to find independent sets and the number of iterations the algorithm must perform, these implementations are useful for independently examining the number of iterations taken by each algorithm.  Otherwise, since it is serial, the Julia code is straightforward. 
+We have written Julia implementations of algorithms 2 and 3, and algorithm 3 in \cite{chung2014distributed}.  Each of these algorithms is a modification of the Moser-Tardos meta-algorithm with a particular way of finding independent sets.  Since there is potentially a tradeoff between the time spent to find independent sets and the number of iterations the algorithm must perform, these implementations are useful for independently examining the number of iterations taken by each algorithm.  Otherwise, since it is serial, the Julia code is straightforward. 
 
-We have also written a Python implementation of algorithm \ref{alg:chung-simple} using the MPI bindings in the mpi4py library.  Since this code is targeted at a distributed-memory environment, we had to consider how to parallelize each step of the algorithm.  We made rather different design choices than suggested by Chung et al.
+We have also written a Python implementation of algorithm 3 using the MPI bindings in the mpi4py library.  Since this code is targeted at a distributed-memory environment, we had to consider how to parallelize each step of the algorithm.  We made rather different design choices than suggested by Chung et al.
 
-Chung et al assume the LOCAL model of communication.  In this model, each clause of the \ksat problem is assigned its own processor and may communicate with its neighbors in the dependency graph.  The running time of an algorithm in this model is proportional to the number of communication rounds.  Since a clause's variables are shared only with its neighbors in the dependency graph, variable updates need only be shared among neighbors.  And Luby's algorithm for independent sets only requires nodes to communicate with their neighbors to discover whether any are currently unsatisfied and have smaller IDs.  In principle, we could use this as a recipe for our code.  In practice, however, using one processor per clause is tremendously wasteful of computational resources.
+Chung et al assume the LOCAL model of communication \cite{peleg2000distributed}.  In this model, each clause of the \ksat problem is assigned its own processor and may communicate with its neighbors in the dependency graph.  The running time of an algorithm in this model is proportional to the number of communication rounds.  Since a clause's variables are shared only with its neighbors in the dependency graph, variable updates need only be shared among neighbors.  And Luby's algorithm for independent sets only requires nodes to communicate with their neighbors to discover whether any are currently unsatisfied and have smaller IDs.  In principle, we could use this as a recipe for our code.  In practice, however, using one processor per clause is tremendously wasteful of computational resources.  It would be practical only for very small problems that could be more efficiently solved serially.
 
-Instead, we assume that responsibility the clauses is divided among a small number of processors.  We assume that the number of processors is small enough, and the dependency graph dense enough, that at least one edge will cross between the subgraphs of the dependency graph on each processor.  (This assumption holds true even for the easiest \ksat instances we use in our benchmarks.)  This means that the variable assignments must be broadcast across the clusters, at the cost of one phase of $O(n)$ communication per iteration.  More importantly, when computing independent sets, each processor may need to check whether every problem clause is satisfied.  To accomplish this, it would be more expensive to broadcast the satisfiedness of every clause than to simply compute it on each machine.  So we broadcast all of the the problem clauses to each processor so that each processor can compute satisfiedness of any clause given an assignment to the variables.  This means that the only coupling among the nodes is the variable assignments; all other computation proceeds independently.
+Instead, we assume that responsibility for the clauses is divided among a small number of processors $p$.  Specifically, we assume that the number of processors is small enough, and the dependency graph dense enough, that at least one edge will cross between the subgraphs of the dependency graph on each processor, with high probability.  (This assumption holds true even for the easiest \ksat instances we use in our benchmarks.)  This leads to several design decisions:
+\begin{enumerate}
+  \item When computing independent sets, each processor may need to check the satisfiedness of every problem clause in order to determine whether its own clauses are local minima in the dependency graph.  To accomplish this, we could compute the satisfiedness of every clause in parallel and then broadcast them.  But this involves $O(m)$ communication per iteration, which is more expensive than simply computing it each machine at a cost of $O(m)$ computation.  So we initially broadcast all of the the problem clauses to each processor, and after initialization, each processor can compute satisfiedness of any clause given an up-to-date assignment to the variables.
+  \item The processor responsible for each clause must identify its neighbors in the dependency graph.  This involves a scan that takes $O(m^2)$ work (though a more sophisticated algorithm that is harder to parallelize takes $O(m k)$ work).  However, given that all the clauses have been broadcast to every processor, this step is embarrassingly parallel.
+  \item Our assumption on $p$ implies that each processor has at least one clause that depends on each variable, with high probability.  Therefore the variable assignments must be broadcast across the clusters on each iteration, at the cost of one phase of $O(n)$ communication.
+  \item With the above two choices, the only coupling among the nodes is the variable assignments.  All other computation proceeds independently, and the variable broadcast is the only communication required (other than the startup cost of broadcasting the clauses).
+\end{enumerate}
 
-Algorithm \ref{alg:implementation} gives pseudocode for our implementation.
+Algorithm 4 gives pseudocode for our implementation.
 
 \begin{algorithm}[H]
 \label{alg:implementation}
 \begin{algorithmic}
 \State Broadcast all clauses.
 \State Assign each clause to a processor $p(j)$.
+\State For each clause $j$, compute the neighbor set $\Gamma(j)$ on processor $p(j)$.
 \State Mark each clause with a random integer ID, and broadcast these marks.
-\State Broadcast an initial random assignment.
+\State Broadcast an initial random assignment of the variables.
 \While{True}
   \State Let $U_k$ be the set of violated clauses assigned to processor $k$.
   \State Let $U$ be the set of all violated clauses, constructed lazily on each processor.
@@ -416,19 +428,62 @@ Algorithm \ref{alg:implementation} gives pseudocode for our implementation.
 
 \section{Benchmarking \ksat}
 \label{sec:benchmarks}
-Since \ksat is NP-complete, benchmarking it is potentially difficult.  Particular problems %FIXME
+Ideally we would use real problems to test our implementation.  Since \ksat is NP-complete, there are surely instances that will take exponential time, and there is no complete theoretical characterization of these instances to guide our selection of synthetic instances.  Unfortunately, due to time constraints we are forced to leave real problems for future work.
 
-\section{Scale Results}
+Instead, we focus on randomly-generated synthetic instances.  A randomly-generated \ksat instance with parameters $m$, $n$, and $k$ has $m$ clauses, each of which selects one of the ${n \choose k}$ subsets of $k$ variables uniformly at random.  Each variable in each clause is negated with probability $1/2$.  It is important to be careful about the selection of problem parameters, since many choices lead to uninteresting problems.  If $m$ is too small, most variable assignments will solve most instances, while if $m$ is too large, most instances will be unsatisfiable.  The annual SAT competition \cite{belov2014sat} provides some guidance on the choice of $m$, $n$, and $k$, and our parameter choices are similar to those in the 2009 competition.  However, it is still unclear how to characterize the difficulty of a particular random instance.  Even with parameters that typically generate hard problems, some instances will be easy or impossible.  To generate our benchmarks, we use rejection sampling to find instances for which no more than a small fraction of assignments solve the instance, taking this as our proxy for problem difficulty.
+
+\section{Results}
 \label{sec:scaling}
+We perform all of our experiments on the Hopper cluster.
+
+\subsection{Strong scaling and profiling}
+Strong scaling for one instance is displayed in figure \ref{fig:strong}.  The algorithm scales almost perfectly for this large problem.  Profiling our code, we found to our surprise that the initial neighbor identification stage was the primary bottleneck.  This involves iterating over each pair of nodes and is embarrassingly parallel, so it takes $O(m^2/p)$ time, where $p$ is the number of processors used.  This explains the favorable scaling.  Profiling results are displayed in figures \ref{fig:profiling} and \ref{fig:profiling-strong}.
+
+\begin{figure}[ht]
+  \includegraphics[scale=0.4]{figures/strong.png}
+  \caption{Strong scaling for a large problem.}
+  \label{fig:strong}
+\end{figure}
+
+\begin{figure}[ht]
+  \includegraphics[scale=0.4]{figures/profiling.png}
+  \caption{Profiling results for varying problem sizes, in log scale.}
+  \label{fig:profiling}
+\end{figure}
+
+\begin{figure}[ht]
+  \includegraphics[scale=0.4]{figures/profiling-strong.png}
+  \caption{Profiling results for a large problem using 1 and 2 Hopper nodes.}
+  \label{fig:profiling-strong}
+\end{figure}
+
+\subsection{Weak scaling}
+For the reasons described in section \ref{sec:benchmarks}, weak scaling is difficult to establish, since the difficulty of a problem is not simple to define.  We attempted to use as a proxy for problem difficulty the probability that a random assignment to the variables would solve the problem.  This proxy was reasonable for small problems, but unreasonable for large ones.  Figure \ref{fig:weak} displays the results of this test.  It appears from this figure that the algorithm scales worse than linearly even as $p$ increases linearly with $m$, but this is likely an artifact of our poor proxy for problem difficulty.  Strong scaling seems to be a more meaningful measure of the utility of parallelism for this problem.
+
+\begin{figure}[ht]
+  \includegraphics[scale=0.4]{figures/weak.png}
+  \caption{An attempted experiment to demonstrate weak scaling.  Large problems are much harder than our proxy suggests.}
+  \label{fig:weak}
+\end{figure}
+
+\subsection{The LLL condition}
+All theoretical results for algorithm 4 require the condition $e p d^2 < 1$, as discussed above.  Theoretical results for other LLL algorithms require $e p d < 1$.  However, in our benchmarks we observe no such hard requirement, nor a threshold effect at $e p d \approxeq 1$.  Figure \ref{fig:lll-condition} compares the number of iterations taken to solve an instance with the value of $e p d$.  There is no noticeable change at $e p d = 1$.  This suggests that there may be room for improvement in the theoretical results.
+
+\begin{figure}[ht]
+  \includegraphics[scale=0.4]{figures/lll-condition.png}
+  \caption{The LLL condition value of a problem ($e p d$) versus the number of iterations taken by algorithm 3.  The problems become harder as $e p d$ increases, but there is no sharp threshold at $1$.}
+  \label{fig:lll-condition}
+\end{figure}
 
 \section{Discussion}
 \label{sec:discussion}
-Our results leave several open questions:
-\begin{description}
-  \item[Graph creation:] Can we speed up or eliminate graph creation?  This turns out to be a major bottleneck in our implementation, which is unsurprising, since it takes $O(m^2)$ total work.
-  %FIXME
-\end{description}
+Overall, our results are positive.  Algorithm 4 performs quite well on the range of problems we have tested, and it exhibits strong scaling.  By naive random search, we could find no cases in which a problem has a satisfying solution that could not be found in fewer than a hundred iterations of algorithm 4.  The current bottleneck, neighbor identification, is embarrassingly parallel.
 
+In addition to the questions enumerated in section \ref{sec:intro}, our results leave several open questions for future work:
+\begin{description}
+  \item[Neighbor identification:] Can we speed up neighbor identification?  An initial random assignment of all variables will satisfy, on average, all but $m 2^{-k}$ clauses, and many clauses may never be unsatisfied during a run of the algorithm.  If we computed neighbor sets lazily, we could avoid doing any work for these always-satisfied clauses, potentially reducing the cost of neighbor identification by a factor of $2^k$.
+  \item[GPUs:] Our implementation targets a distributed-memory environment, but GPUs could be better choices.  In a GPU, an implementation closer to the LOCAL computational model, with $p \approxeq m$, might be appropriate.
+\end{description}
 
 \bibliographystyle{plain}
 \bibliography{\jobname}
