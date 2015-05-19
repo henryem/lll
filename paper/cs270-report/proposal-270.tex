@@ -1,0 +1,208 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage[retainorgcmds]{IEEEtrantools}
+\usepackage{filecontents}
+\usepackage{hyperref}
+\author{Henry Milner}
+\title{CS270 Project Proposal: Algorithmic Lovasz Local Lemma}
+\date{4/3/15}
+
+% Some convenience functions for homework problems.
+\newcommand{\problem}[1]%
+  {\section*{#1.}}
+
+\newcommand{\problemSubpart}[1]%
+  {\noindent\emph{#1.}}
+
+\newcommand{\problemNamedSubpart}[1]%
+  {\noindent\emph{#1}}
+
+% Some convenience functions for note-taking.
+\newcommand{\topic}[1]%
+  {\section*{#1}}
+
+% Some functions for general use.
+
+\def\seqn#1\eeqn{\begin{align}#1\end{align}}
+
+\newcommand{\vecName}[1]%
+  {\boldsymbol{#1}}
+
+\newcommand{\io}%
+  {\text{ i.o. }}
+
+\newcommand{\eventually}%
+  {\text{ eventually }}
+
+\newcommand{\tr}%
+  {\text{tr}}
+
+\newcommand{\Cov}%
+  {\text{Cov}}
+
+\newcommand{\adj}%
+  {\text{adj}}
+
+\newcommand{\funcName}[1]%
+  {\text{#1}}
+
+\newcommand{\hasDist}%
+  {\sim}
+
+\DeclareMathOperator*{\E}%
+  {\mathbb{E}}
+
+\newcommand{\Var}%
+  {\text{Var}}
+
+\newcommand{\std}%
+  {\text{std}}
+
+\newcommand{\grad}%
+  {\nabla}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\inprod}[2]%
+  {\langle #1, #2 \rangle}
+
+\newcommand{\dd}[1]%
+  {\frac{\delta}{\delta#1}}
+
+\newcommand{\Reals}%
+  {\mathbb{R}}
+
+\newcommand{\indep}%
+  {\protect\mathpalette{\protect\independenT}{\perp}} \def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+
+\newcommand{\defeq}%
+  {\buildrel\triangle\over =}
+
+\newcommand{\defn}[1]%
+  {\emph{Definition: #1}\\}
+
+\newcommand{\example}[1]%
+  {\emph{Example: #1}\\}
+
+\newcommand{\figref}[1]%
+  {\figurename~\ref{#1}}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newenvironment{proof}[1][Proof]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+\begin{filecontents}{\jobname.bib}
+@article{erdos1975problems,
+  title={Problems and results on 3-chromatic hypergraphs and some related questions},
+  author={Erdos, Paul and Lov{\'a}sz, L{\'a}szl{\'o}},
+  journal={Infinite and finite sets},
+  volume={10},
+  number={2},
+  pages={609--627},
+  year={1975}
+}
+@article{beck1991algorithmic,
+  title={An algorithmic approach to the Lov{\'a}sz local lemma. I},
+  author={Beck, J{\'o}zsef},
+  journal={Random Structures \& Algorithms},
+  volume={2},
+  number={4},
+  pages={343--365},
+  year={1991},
+  publisher={Wiley Online Library}
+}
+@article{moser2010constructive,
+ author = {Moser, Robin A. and Tardos, G\'{a}bor},
+ title = {A Constructive Proof of the General Lov\ÁSz Local Lemma},
+ journal = {J. ACM},
+ issue_date = {January 2010},
+ volume = {57},
+ number = {2},
+ month = feb,
+ year = {2010},
+ issn = {0004-5411},
+ pages = {11:1--11:15},
+ articleno = {11},
+ numpages = {15},
+ url = {http://doi.acm.org/10.1145/1667053.1667060},
+ doi = {10.1145/1667053.1667060},
+ acmid = {1667060},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {Constructive proof, Lov\'{a}sz local lemma, parallelization},
+} 
+@article{haeupler2011new,
+  title={New constructive aspects of the lovasz local lemma},
+  author={Haeupler, Bernhard and Saha, Barna and Srinivasan, Aravind},
+  journal={Journal of the ACM (JACM)},
+  volume={58},
+  number={6},
+  pages={28},
+  year={2011},
+  publisher={ACM}
+}
+@inproceedings{freer2010probabilistic,
+  title={When are probabilistic programs probably computationally tractable?},
+  author={Freer, Cameron E and Mansinghka, Vikash K and Roy, Daniel M},
+  booktitle={NIPS Workshop on Advanced Monte Carlo Methods with Applications},
+  year={2010}
+}
+@article{wainwright2008graphical,
+  title={Graphical models, exponential families, and variational inference},
+  author={Wainwright, Martin J and Jordan, Michael I},
+  journal={Foundations and Trends{\textregistered} in Machine Learning},
+  volume={1},
+  number={1-2},
+  pages={1--305},
+  year={2008},
+  publisher={Now Publishers Inc.}
+}
+@inproceedings{papadimitriou1991selecting,
+  title={On selecting a satisfying truth assignment},
+  author={Papadimitriou, Christos H},
+  booktitle={Foundations of Computer Science, 1991. Proceedings., 32nd Annual Symposium on},
+  pages={163--169},
+  year={1991},
+  organization={IEEE}
+}
+@inproceedings{steurer2010fast,
+  title={Fast SDP algorithms for constraint satisfaction problems},
+  author={Steurer, David},
+  booktitle={Proceedings of the twenty-first annual ACM-SIAM symposium on Discrete Algorithms},
+  pages={684--697},
+  year={2010},
+  organization={Society for Industrial and Applied Mathematics}
+}
+@inproceedings{polik2007sedumi,
+  title={SeDuMi: a package for conic optimization},
+  author={Polik, Imre and Terlaky, Tamas and Zinchenko, Yuriy},
+  booktitle={IMA workshop on Optimization and Control, Univ. Minnesota, Minneapolis},
+  year={2007}
+}
+\end{filecontents}
+\immediate\write18{bibtex \jobname}
+
+\begin{document}
+\maketitle
+
+For my project, I will study the algorithmic Lovasz Local Lemma (LLL).  I will begin with a survey of the literature on the subject.  This will cover the nonconstructive lemma due to Erdos and Lovasz \cite{erdos1975problems} (briefly, since it was covered in class), then the first algorithm by Beck \cite{beck1991algorithmic}, and finally the general algorithm and information-theoretic proof by Moser and Tardos \cite{moser2010constructive}.
+
+After the survey, I will (time permitting) explore two questions that motivate my interest in this subject:
+
+\subsection{Connections to MCMC Sampling}
+In a 2010 paper, Freer et al \cite{freer2010probabilistic} point out that Moser's algorithm is similar to MCMC sampling in probabilistic graphical models.  In the usual algorithmic LLL setup, we let $\mathcal{E} = \{E_1, \cdots, E_n\}$ be a set of events determined by marginally mutually independent random variables $\mathcal{A} = \{A_1, \cdots, A_m\}$.  We could think of this as a directed probabilistic graphical model (DPGM), with an arrow from each variable $A_i$ to the events $c(A_i)$ dependent on it.  A satisfying assignment is anything that has positive probability when we condition on none of the events happening.  Then Moser's algorithm repeatedly picks parent sets $\pi(E_j)$ that have probability $0$ under the current assignment and resamples them from their marginal distribution.
+
+This is close to a Metropolis-Hastings sampling scheme: the proposal distribution resamples all parents of an arbitrary event, and the proposal is rejected if the event already didn't happen under the previous assignment.  Moser's algorithm cannot actually be a proper Metropolis-Hastings algorithm, since the Markov chain produced when we run it eventually reaches an absorbing state.  Still, Srinivasan et al \cite{haeupler2011new} show that Moser's algorithm approximately samples from the ```conditional LLL''' distribution -- the joint distribution of the $A_i$ conditional on none of the events in $\mathcal{E}$ happening -- which is all that we want out of a sampling algorithm.
+
+I would like to investigate whether an algorithm like Moser's could perform fast sampling in PDGMs that satisfy an LLL-like condition.  The proof techniques in \cite{moser2010constructive} and \cite{haeupler2011new} seem quite different from those in the literature on probablistic inference.  For example, the LLL condition applies to graphs with very high treewidth (at least $k$ in the $k$-SAT problem), while exact inference in general graphs is exponentially hard in the treewidth\cite{wainwright2008graphical}.  I also want to see whether Moser's algorithm and proof can be modified to work when the events in $\mathcal{E}$ are merely dependent on the $A_i$, and not fixed deterministically by them.
+
+\subsection{Practicality}
+Is Moser's algorithm useful in practice?  It seems that common local search methods for problems like $k$-SAT and graph coloring are similar to Moser's algorithm, but not exactly the same.  Since Moser's algorithm is so simple (and so similar to algorithms like Papadimitriou's algorithm for $2$-SAT \cite{papadimitriou1991selecting}), it seems likely that practitioners would have tried it heuristically.  But I have not (so far) found any studies of this; perhaps this idea has not yet migrated out of the theory community.  So I would like to write a reasonably performant implementation of the parallel version of Moser's algorithm, and then compare it on CSP benchmarks with off-the-shelf solvers and perhaps with an SDP relaxation \cite{steurer2010fast} using an off-the-shelf SDP solver like SeDuMi \cite{polik2007sedumi}.
+
+\bibliographystyle{plain}
+\bibliography{\jobname}
+
+\end{document}
