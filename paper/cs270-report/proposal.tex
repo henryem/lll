@@ -1,0 +1,224 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage[retainorgcmds]{IEEEtrantools}
+\usepackage{algpseudocode}
+\usepackage{filecontents}
+\usepackage{hyperref}
+\author{Henry Milner}
+\title{CS270 Project Proposal: Algorithmic Lovasz Local Lemma}
+\date{4/3/15}
+
+% Some convenience functions for homework problems.
+\newcommand{\problem}[1]%
+  {\section*{#1.}}
+
+\newcommand{\problemSubpart}[1]%
+  {\noindent\emph{#1.}}
+
+\newcommand{\problemNamedSubpart}[1]%
+  {\noindent\emph{#1}}
+
+% Some convenience functions for note-taking.
+\newcommand{\topic}[1]%
+  {\section*{#1}}
+
+% Some functions for general use.
+
+\def\seqn#1\eeqn{\begin{align}#1\end{align}}
+
+\newcommand{\vecName}[1]%
+  {\boldsymbol{#1}}
+
+\newcommand{\io}%
+  {\text{ i.o. }}
+
+\newcommand{\eventually}%
+  {\text{ eventually }}
+
+\newcommand{\tr}%
+  {\text{tr}}
+
+\newcommand{\Cov}%
+  {\text{Cov}}
+
+\newcommand{\adj}%
+  {\text{adj}}
+
+\newcommand{\funcName}[1]%
+  {\text{#1}}
+
+\newcommand{\hasDist}%
+  {\sim}
+
+\DeclareMathOperator*{\E}%
+  {\mathbb{E}}
+
+\newcommand{\Var}%
+  {\text{Var}}
+
+\newcommand{\std}%
+  {\text{std}}
+
+\newcommand{\grad}%
+  {\nabla}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\inprod}[2]%
+  {\langle #1, #2 \rangle}
+
+\newcommand{\dd}[1]%
+  {\frac{\delta}{\delta#1}}
+
+\newcommand{\Reals}%
+  {\mathbb{R}}
+
+\newcommand{\indep}%
+  {\protect\mathpalette{\protect\independenT}{\perp}} \def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+
+\newcommand{\defeq}%
+  {\buildrel\triangle\over =}
+
+\newcommand{\defn}[1]%
+  {\emph{Definition: #1}\\}
+
+\newcommand{\example}[1]%
+  {\emph{Example: #1}\\}
+
+\newcommand{\figref}[1]%
+  {\figurename~\ref{#1}}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newenvironment{proof}[1][Proof]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+\begin{filecontents}{\jobname.bib}
+@article{erdos1975problems,
+  title={Problems and results on 3-chromatic hypergraphs and some related questions},
+  author={Erdos, Paul and Lov{\'a}sz, L{\'a}szl{\'o}},
+  journal={Infinite and finite sets},
+  volume={10},
+  number={2},
+  pages={609--627},
+  year={1975}
+}
+@article{beck1991algorithmic,
+  title={An algorithmic approach to the Lov{\'a}sz local lemma. I},
+  author={Beck, J{\'o}zsef},
+  journal={Random Structures \& Algorithms},
+  volume={2},
+  number={4},
+  pages={343--365},
+  year={1991},
+  publisher={Wiley Online Library}
+}
+@article{moser2010constructive,
+ author = {Moser, Robin A. and Tardos, G\'{a}bor},
+ title = {A Constructive Proof of the General Lov\ÁSz Local Lemma},
+ journal = {J. ACM},
+ issue_date = {January 2010},
+ volume = {57},
+ number = {2},
+ month = feb,
+ year = {2010},
+ issn = {0004-5411},
+ pages = {11:1--11:15},
+ articleno = {11},
+ numpages = {15},
+ url = {http://doi.acm.org/10.1145/1667053.1667060},
+ doi = {10.1145/1667053.1667060},
+ acmid = {1667060},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {Constructive proof, Lov\'{a}sz local lemma, parallelization},
+} 
+@article{haeupler2011new,
+  title={New constructive aspects of the lovasz local lemma},
+  author={Haeupler, Bernhard and Saha, Barna and Srinivasan, Aravind},
+  journal={Journal of the ACM (JACM)},
+  volume={58},
+  number={6},
+  pages={28},
+  year={2011},
+  publisher={ACM}
+}
+@inproceedings{chung2014distributed,
+  title={Distributed algorithms for the Lov{\'a}sz local lemma and graph coloring},
+  author={Chung, Kai-Min and Pettie, Seth and Su, Hsin-Hao},
+  booktitle={Proceedings of the 2014 ACM symposium on Principles of distributed computing},
+  pages={134--143},
+  year={2014},
+  organization={ACM}
+}
+@inproceedings{freer2010probabilistic,
+  title={When are probabilistic programs probably computationally tractable?},
+  author={Freer, Cameron E and Mansinghka, Vikash K and Roy, Daniel M},
+  booktitle={NIPS Workshop on Advanced Monte Carlo Methods with Applications},
+  year={2010}
+}
+@article{wainwright2008graphical,
+  title={Graphical models, exponential families, and variational inference},
+  author={Wainwright, Martin J and Jordan, Michael I},
+  journal={Foundations and Trends{\textregistered} in Machine Learning},
+  volume={1},
+  number={1-2},
+  pages={1--305},
+  year={2008},
+  publisher={Now Publishers Inc.}
+}
+@inproceedings{papadimitriou1991selecting,
+  title={On selecting a satisfying truth assignment},
+  author={Papadimitriou, Christos H},
+  booktitle={Foundations of Computer Science, 1991. Proceedings., 32nd Annual Symposium on},
+  pages={163--169},
+  year={1991},
+  organization={IEEE}
+}
+@inproceedings{steurer2010fast,
+  title={Fast SDP algorithms for constraint satisfaction problems},
+  author={Steurer, David},
+  booktitle={Proceedings of the twenty-first annual ACM-SIAM symposium on Discrete Algorithms},
+  pages={684--697},
+  year={2010},
+  organization={Society for Industrial and Applied Mathematics}
+}
+@inproceedings{polik2007sedumi,
+  title={SeDuMi: a package for conic optimization},
+  author={Polik, Imre and Terlaky, Tamas and Zinchenko, Yuriy},
+  booktitle={IMA workshop on Optimization and Control, Univ. Minnesota, Minneapolis},
+  year={2007}
+}
+\end{filecontents}
+\immediate\write18{bibtex \jobname}
+
+\begin{document}
+\maketitle
+
+The algorithmic Lovasz Local Lemma (LLL) is a recent-developed class of randomized algorithms for solving certain easy instances of hard combinatorial problems.  The seminal paper in the field is by Moser and Tardos \cite{moser2010constructive} in 2010.  For many problems, LLL algorithms theoretically lend themselves well to parallelism, as demonstrated in more recent work \cite{chung2014distributed,haeupler2011new}.  However, we are aware of no published empirical tests of the efficiency of LLL algorithms in practice.  In our project, we will implement parallel LLL algorithms for graph coloring and k-SAT, and we will compare their performance on benchmarks against other algorithms.
+
+\subsection{A brief introduction to LLL algorithms}
+The basic setup for LLL algorithms is as follows: Let $\mathcal{A} = \{A_1, \cdots, A_m\} \in 2^m$ be a set of discrete variables (which we take to be binary for sake of exposition), and let $\mathcal{E} = \{E_1, \cdots, E_n\}$ be a set of functions $[K]^m \to \{\operatorname{true},\operatorname{false}\}$ mapping the variables to truth values.  The $E_i$ are called ``events,'' and $E_i$ is said to ``happen'' if it is true.  We would like to find an assignment of the variables so that none of the events happen.  For example, in k-SAT, the $A_i$ are the problem variables, and each $E_i$ is a clause involving $k$ variables.  The simplest version of the algorithm is \emph{extremely} simple:
+
+\begin{algorithmic}
+\State Sample all the $A_i$ IID Bernoulli($1/2$).
+\While{Any of the $E_j$ happen}
+  \State Let $E_j$ be an arbitrary event that happens.
+  \State Sample each $A_i \in \{A_i: E_j\text{ depends on }A_i\}$ IID Bernoulli($1/2$).
+\EndWhile
+\end{algorithmic}
+
+Of course, the decision version of k-SAT is NP-hard, so we would not expect this algorithm to work for all instances.  Moser and Tardos \cite{moser2010constructive} prove that it runs in expected polynomial time when the when the events are not ``too dependent.''  Let $p$ be the maximum probability that any single event happens under a random assignment to all the variables.  Construct an undirected dependency graph for the events, in which there is an edge between $E_j$ and $E_k$ if they are statistically dependent under random assignment to the $A_i$.  In k-SAT, there is an edge between clauses $E_j$ and $E_k$ if they share any variable.  Let $d$ be the maximum degree of events in this graph.  Then the above algorithm finishes in expected polynomial time if $e p d < 1$, where $e$ is the base of the natural logarithm.
+
+The dependency graph is useful for seeing an easy way to parallelize the simple LLL algorithm.  Notice that if independent events $E_j$ and $E_k$ happen under the current assignment to $\mathcal{A}$, and event $E_j$'s variables are chosen for resampling, then (by independence) $E_k$ will still happen after the resampling, so the next iteration could resample it.  This means we can resample variables depended-on by any independent set of events that currently happen, and this resampling can be done in parallel.  Chung et al \cite{chung2014distributed} and Srinivasan et al \cite{haeupler2011new} give alternative parallel algorithms that are less obviously correct, but which can be run on distributed computers.
+
+\subsection{Project goals}
+
+% Is Moser's algorithm useful in practice?  It seems that common local search methods for problems like $k$-SAT and graph coloring are similar to Moser's algorithm, but not exactly the same.  Since Moser's algorithm is so simple (and so similar to algorithms like Papadimitriou's algorithm for $2$-SAT \cite{papadimitriou1991selecting}), it seems likely that practitioners would have tried it heuristically.  But I have not (so far) found any studies of this; perhaps this idea has not yet migrated out of the theory community.  So I would like to write a reasonably performant implementation of the parallel version of Moser's algorithm, and then compare it on CSP benchmarks with off-the-shelf solvers and perhaps with an SDP relaxation \cite{steurer2010fast} using an off-the-shelf SDP solver like SeDuMi \cite{polik2007sedumi}.
+
+\bibliographystyle{plain}
+\bibliography{\jobname}
+
+\end{document}
