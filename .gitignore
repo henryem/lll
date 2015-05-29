@@ -1,2 +1,12 @@
 mpi/test
 *.pyc
+*.aux
+*.bbl
+*.bib
+*.blg
+*.lb
+*.log
+*.out
+*.pdf
+*.synctex.gz
+*.DS_Store

@@ -170,6 +170,19 @@
   year = {2009},
   howpublished = {\url{http://blog.computationalcomplexity.org/2009/06/kolmogorov-complexity-proof-of-lov.html}}
 }
+@article{Lu2007,
+  author = {Lu, Linyuan, Székely, László},
+  journal = {The Electronic Journal of Combinatorics [electronic only]},
+  keywords = {dependency graph; negative dependency graph; Lovasz local lemma; random injections; permutation enumeration; hzpergraph packing; Turan-type extremal problems},
+  language = {eng},
+  number = {1},
+  pages = {Research Paper R63, 13 p.-Research Paper R63, 13 p.},
+  publisher = {Prof. André Kündgen, Deptartment of Mathematics, California State University San Marcos, San Marcos},
+  title = {Using Lovász local lemma in the space of random injections.},
+  url = {http://eudml.org/doc/117186},
+  volume = {14},
+  year = {2007},
+}
 @article{haeupler2011new,
   title={New constructive aspects of the lovasz local lemma},
   author={Haeupler, Bernhard and Saha, Barna and Srinivasan, Aravind},
@@ -445,7 +458,7 @@ It remains to encode $(A_{t(i)})_{i=1}^{t}$ efficiently.  Note that we cannot si
   \item[Children:] Whenever the inner loop in \texttt{Fix}$(i)$ calls \texttt{Fix}$(j)$, there must already be a node in the tree (either a root or, inductively, a child) corresponding to that flaw-addressing instance for flaw $i$.  When such a call results in a call to \texttt{Resample}$(j)$, we add a child to that node corresponding to flaw $A_j$.
 \end{description}
 
-For \ksat, $p = 2^{-k}$, so by the assumption $2^C_0 p (d+1) < 1$, each flaw is independent of all but at most $2^{k-C_0}$ other flaws, including itself.  So if an flaw-addressing instance is a child in the witness forest, it can be encoded using only $k-C_0$ bits.  Unfortunately, the argument is more complicated than that, because we must also encode the structure of the forest itself.  Encoding the identities and order of the roots is easy enough, since each flaw can appear at most once, and the order is by flaw index.  But encoding the individual trees is harder.  Given a complete graph on $t$ nodes, there are $t^{t-2}$ distinct spanning trees, so it takes $(t-2) \log_2 t$ bits to encode such trees \cite{prufer1918neuer,neville1953codifying}.  Since we also need to know the order of calls in the inner loop, and we can have potentially $m$ disjoint trees, the encoding length of a witness forest appears to be even greater than this.  If this were true, the average encoding length of a node would eventually become larger than $k$, ruining the proof.
+For \ksat, $p = 2^{-k}$, since only one of the $2^k$ assignments to a disjunctive clause can violate it.  The assumption $2^C_0 p (d+1) < 1$ means that each flaw is independent of all but at most $2^{k-C_0}$ flaws, including itself.  So if an flaw-addressing instance is a child in the witness forest, it can be encoded using only $k-C_0$ bits.  This is the crux of the argument.  Unfortunately, things are slightly more complicated than that, because we must also encode the structure of the forest itself.  Encoding the identities and order of the roots is easy enough, since each flaw can appear at most once, and the order is by flaw index.  But encoding the individual trees is harder.  Given a complete graph on $t$ nodes, there are $t^{t-2}$ distinct spanning trees, so it takes $(t-2) \log_2 t$ bits to encode such trees \cite{prufer1918neuer,neville1953codifying}.  Since we also need to know the order of calls in the inner loop, and we can have potentially $m$ disjoint trees, the encoding length of a witness forest appears to be even greater than this.  If this were true, the average encoding length of a node would eventually become larger than $k$, ruining the proof.
 
 However, we actually only need to encode the \emph{unlabelled structure} of each tree in the witness forest, and this is easier.  There is a simple encoding scheme, but let us add some intuition.  First, note that recording the order of calls in the inner loop is unnecessary, since the calls are made in a fixed order by flaw identity.  So if we are told only the identity of the root of each tree in the forest and the set of children of each node, we can reconstruct the order of each child set.  %FIXME: This is a bad explanation.  Needs pictures.
 Second, we do not actually need to label the nodes of the tree.  We can just store the $k-C_0$-bit child identifiers in a some fixed order, for example the order in which a DFS visits nodes of the tree when children are ordered by their indices. %FIXME: Also needs a picture.
@@ -459,16 +472,31 @@ If we are willing to weaken the upper bound a bit, there is a very simple concre
 
 So we can encode $Y$ using at most $n + m + (k - C_0 + 2)t$ bits, and we can determine $Z$ from $Y$, so by Shannon's source coding theorem
 \seqn
-  n + m + (k - C_0 + 1)t \leq n + k t .
+  n + m + (k - C_0 + 2)t \leq n + k t \label{eqn:ksat-entropy-inequality}.
 \eeqn
 
-This is violated if $t \geq \frac{m}{C_0 - 2}$, so the algorithm must finish (in expectation) before that many iterations.  We have also shown that the algorithm must finish in expectation before $\frac{m}{C_0 - \log_2 \frac{1}{0.3383}} + O(1)$ iterations.  A more careful argument using a Galton-Watson process gets the constant down to $\log_2 e$.
+This is violated if $t \geq \frac{m}{C_0 - 2}$, so the algorithm must finish (in expectation) before that many iterations.  We have also shown that the algorithm must finish in expectation before $\frac{m}{C_0 - \log_2 \frac{1}{0.3383}} + O(1)$ iterations.  Moser and Tardos give a more careful argument considering the witness tree explicitly as a draw from a particular Galton-Watson process, bringing $C_0$ down to $\log_2 e$.  (This implies that the witness trees generated by algorithm \ref{alg:mt-recursive} are not uniformly distributed on the possible trees of fixed size.)
+
+\subsection{Arbitrary starting state}
+Note also that a similar proof would still work, with a worse bound, if we eliminated the requirement that the algorithm started in a uniform random state.  If the starting state is arbitrary, then it may have entropy $0$, and inequality \ref{eqn:ksat-entropy-inequality} would become
+\seqn
+  n + m + (k - C_0 + 2)t &\leq k t \\
+  \implies t \leq \frac{n+m}{C_0-2} .
+\eeqn
+So we pay an additive penalty (at least according to this upper bound) equal to the dimension of the problem.  We will see this later when we review \cite{achlioptas2014random}.
 %FIXME: Explain this better.
 
 \subsection{General LLL problems}
-%FIXME
+The proof above was restricted to \ksat.  In this subsection we outline the proof of the constructive LLL in full generality.
+
+The important difference between \ksat and general LLL problems is that \ksat events are \emph{elementary}: For every flaw $A_i$, only a single assignment to the variables in $\operatorname{vbl}(A_i)$ causes $A_i$ to happen.  This allowed us to reconstruct the algorithm state vector $Y$ given only the final state $\sigma_{t}$ and the vector of flaws addressed $(A_1, \cdots, A_t)$.  Each flaw could be addressed using $\log_2 (d+1) + C_0$ bits, but from its identity we reconstructed one out of $2^k$ possible assignments, $k = \log_2 2^k = \log_2 (1/p)$ bits of information.  The contradiction arose because $\log_2 (1/p) > \log_2 (d+1) + C_0$, which is exactly the LLL condition.
+
+Now that we have stated the argument in this way, the general case is straightforward.  Assume that we know $\sigma_{i+1}$ and $A_i$.  Then we know that $\operatorname{vbl}(A_i)$ take values in $\sigma_i$ with joint probability at most $p$.  If $\Omega$ is discrete, then we have gained $\log_2 (1/p)$ bits of information about $\sigma_i$.  If we used only $\log_2 (d+1) + C_0$ bits to encode it, we eventually get the same contradiction.
+
+If $\Omega$ is continuous, then the same is true, except that we must make our arguments in terms of entropy rather than bits.  We have also ignored the fact that our argument was inductive, and when there is some uncertainty remaining in $\sigma_{i}$, we no longer know it exactly when we try to infer $\sigma_{i-1}$.  Both issues are surmountable, but we will defer that to section \ref{subsec:trivial}.
 
 \subsection{The simple Moser-Tardos algorithm}
+Algorithm \ref{alg:mt-recursive} is convenient for analysis, but algorithm \ref{alg:mt} is easier to describe and implement, and it leads to parallel algorithms.  In this subsection we outline the proof of the constructive LLL with algorithm \ref{alg:mt}.
 %FIXME
 
 \subsection{A weaker condition}
@@ -485,12 +513,21 @@ This condition is more complicated and unnecessary for exposition, so we have  f
   &= x(A_i) \prod_{j \in \Gamma(i)} (1 - x(A_j)) .
 \eeqn
 
+The proof of the constructive LLL under condition \ref{eqn:general-lll-req} uses the condition to construct a Galton-Watson process whose entropy lower-bounds that of the witness trees actually generated by algorithm \ref{}.  Moser and Tardos do not use those terms explicitly.  Instead, they bound the probability of any tree appearing with a particular root and sum those probabilities over trees and roots to bound the expected number of elements of a witness tree.  It would be interesting to give a version of the proof that more explicitly relies on the entropy compression argument, but we will not do that here.
+%FIXME
+
 \section{The algorithmic LLL on general sample spaces}
 \label{sec:perfect}
-Thus far, we have seen only a variable-version LLL problem in which our probability space was a product of $n$ variables.  The MT algorithm requires explicit access to those variables, and it is restricted to handling every flaw in the same way -- by resampling all of its variables from the projection of $\mu$ on the lower-dimensional space of those variables.  Both assumptions are satisfied for many interesting problems, but it is still interesting to see how they can be relaxed.  The sample space for some combinatorial problems is better represented in other forms, such as permutations \cite{achlioptas2014random}.  And contra the second assumption, many local search algorithms for \ksat (e.g. \texttt{WalkSAT} \cite{papadimitriou1991selecting}) are similar to MT, but will flip only a smaller number of variables on each iteration, and with a more complicated random component.  The proof of Moser and Tardos assumes a \emph{particular} search algorithm and applies to a \emph{somewhat broad} class of problems, but it would be nice to have a way to prove efficiency of a broader class of algorithms (and perhaps for an even broader class of problems).  Achlioptas and Iliopoulos \cite{achlioptas2014random} take a step in this direction, providing an elegant framework for proving efficiency of random local search algorithms in arbitrary finite spaces.  Examining this framework is instructive.
+Thus far, we have seen only a variable-version LLL problem in which our probability space was a product of $n$ variables.  The MT algorithm requires explicit access to those variables, and it is restricted to handling every flaw in the same way -- by resampling all of its variables from the projection of $\mu$ on the lower-dimensional space of those variables.  Both assumptions are satisfied for many interesting problems, but it is still useful to see how they can be relaxed.  The sample space for some combinatorial problems is better represented in other forms, such as permutations \cite{achlioptas2014random} or more generally random injections \cite{lu2007injections}.  And contra the second assumption, many local search algorithms for \ksat (e.g. \texttt{WalkSAT} \cite{papadimitriou1991selecting}) are similar to MT, but will flip only a smaller number of variables on each iteration, and with a more complicated random component.
+%FIXME: These are weak examples.
+The proof of Moser and Tardos assumes a \emph{particular} search algorithm and applies to a \emph{somewhat broad} class of problems, but it would be nice to have a way to prove efficiency of a broader class of algorithms (and perhaps for an even broader class of problems).  Achlioptas and Iliopoulos \cite{achlioptas2014random} take a step in this direction, providing an elegant framework for proving efficiency of random local search algorithms in arbitrary finite spaces.  Examining this framework is instructive.
 
-Again take our $\sigma$-algebra to be $(\Omega, \Sigma)$, but this time without a product structure and without even a measure $\mu$.  Our set of flaws is the same as before, but now there can be no notion of $\operatorname{vbl}(A_i)$.  Let $U(\sigma)$ denote the set of flaws that happen under state $\sigma$.  Again, our goal is to find a flawless element $\sigma^* \in \Omega$.  Consider any randomized iterative algorithm whose random state is Markovian and stationary, which attempts to find a flawless object.  (The MT algorithm is an example of such an algorithm.)  We can always encode such an algorithm in a random walk graph $\mathcal{T}$ on $\Omega$.  Now let us try to write down the properties of this graph that are really needed for something like the proof in section \ref{sec:lll} to apply.
+Again take our $\sigma$-algebra to be $(\Omega, \Sigma)$, but this time without a product structure and without even a measure $\mu$.  Our set of flaws is the same as before, but now there can be no notion of $\operatorname{vbl}(A_i)$.  Let $U(\sigma)$ denote the set of flaws that happen under state $\sigma$.  Again, our goal is to find a flawless element $\sigma^* \in \Omega$.  Consider any randomized iterative algorithm whose random state is Markovian and stationary, which attempts to find a flawless object.  (The MT algorithm is an example of such an algorithm.)  By definition, we can view such algorithms as random walks $\mathcal{T}$ on $\Omega$.
 
+The argument in section \ref{sec:lll} was really an argument about %FIXME
+Now let us try to write down the properties of this graph that are really needed for something like the proof in section \ref{sec:lll} to apply.
+
+%FIXME: s/_t/_s/
 The first requirement is ``accountability of action.''  In Tao's proof, we needed the fact that the flaw $A_t$ addressed on iteration $t$ uniquely determined the values of $\operatorname{vbl}(A_t)$ in the previous state $\sigma_t$.  We proved this by assuming, by induction, that we knew the values of the variables in $\sigma_{t+1}$.  Given the identity of the flaw, we knew that $\sigma_t$ and $\sigma_{t+1}$ differed only on the variables in $\operatorname{vbl}(A_t)$ differed.  Further, since each flaw could be violated by only one configuration of its variables, we knew what that configuration must have been in $\sigma_t$.  Without variables, we need a different tack to get a correspondence between flaw vectors and algorithm state vectors.  We will still assume that the algorithm ``addresses'' a single flaw on each iteration; given a current state $\sigma_t$ and a flaw to address, the algorithm draws from some distribution to find its next action.  To achieve accountability, we assume that, for every (flaw, state) pair $(A_{t}, \sigma_{t+1})$, there is a unique previous state $\sigma_t$.  In terms of the random walk graph, this means that if we label each weighted edge in the graph with the flaw we addressed at that step, each node has at most one incoming edge for each flaw.  This requirement is called ``atomicity.''
 
 In the variable version of the problem, there are two simple sufficient conditions for atomicity:
