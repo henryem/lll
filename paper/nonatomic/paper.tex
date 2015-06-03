@@ -1,10 +1,13 @@
-\documentclass[twocolumn]{article}
+\documentclass{article}
 \usepackage{amsmath, amssymb}
 \usepackage[retainorgcmds]{IEEEtrantools}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{filecontents}
 \usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{fit,positioning}
+\usepackage{mdframed}
 \author{Henry Milner}
 \title{Toward A Non-Atomic Algorithmic Lov\'{a}sz~ Local Lemma}
 \date{5/15/15}
@@ -75,6 +78,10 @@
 
 \DeclareMathOperator*{\argmax}{arg\,max}
 
+\DeclareMathOperator*{\esssup}{ess\,sup}
+
+\DeclareMathOperator*{\essinf}{ess\,inf}
+
 \newcommand{\inprod}[2]%
   {\langle #1, #2 \rangle}
 
@@ -83,6 +90,8 @@
 
 \newcommand{\Reals}%
   {\mathbb{R}}
+\newcommand{\Nats}%
+  {\mathbb{N}}
 
 \newcommand{\indep}%
   {\protect\mathpalette{\protect\independenT}{\perp}} \def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
@@ -170,7 +179,7 @@
   year = {2009},
   howpublished = {\url{http://blog.computationalcomplexity.org/2009/06/kolmogorov-complexity-proof-of-lov.html}}
 }
-@article{Lu2007,
+@article{lu2007injections,
   author = {Lu, Linyuan, Székely, László},
   journal = {The Electronic Journal of Combinatorics [electronic only]},
   keywords = {dependency graph; negative dependency graph; Lovasz local lemma; random injections; permutation enumeration; hzpergraph packing; Turan-type extremal problems},
@@ -389,12 +398,31 @@ Moser and Tardos prove that their algorithm finishes in expected polynomial time
   \item[$d$] is the maximum degree of any flaw in the \emph{dependency graph} on flaws, in which two flaws are connected by an edge if they are statistically dependent when $X \hasDist \mu$.  (We will denote by $\Gamma(i)$ the neighborhood of $i$, the set of indices of flaws that neighbor flaw $i$ in this dependency graph.  $\Gamma^{+}(i) = \Gamma(i) \cup \{i\}$ is the inclusive neighborhood.)  Then $d = \max_{i \in [m]} |\Gamma(i)|$ and $d+1 = \max_{i \in [m]} |\Gamma^{+}(i)|$.
 \end{description}
 
+\begin{figure}[ht]
+  \begin{mdframed}
+    \centering
+    \includegraphics[scale=0.5]{figures/mt-directed-example.png}
+    \caption{One iteration of an example run of the Moser-Tardos algorithm for \ksat.  The problem is to find an assignment to the binary variables $a$, $b$, $c$, and $d$ so that $(!a|b)\&(b|!d)\&(a|c)$.  The variables are initialized uniformly at random before the algorithm starts.}
+    \label{fig:mt-directed-example}
+  \end{mdframed}
+\end{figure}
+
+\begin{figure}[ht]
+  \begin{mdframed}
+    \centering
+    \includegraphics[scale=0.5]{figures/mt-undirected-example.png}
+    \caption{The dependency graph for the problem pictured in figure \ref{fig:mt-directed-example}.  Here $d = 2$ and $p = 2^{-2}$, so the LLL condition $e p (d + 1)$ does not hold.}
+    \label{fig:mt-undirected-example}
+  \end{mdframed}
+\end{figure}
+
 Their proof uses a novel \emph{entropy compression} argument.  They show that the MT algorithm must terminate in a certain number of steps (on average) or it would be possible to represent the algorithm's state trajectory using fewer random bits than were used to generate it, which is impossible.  Tao \cite{tao2009entropy} and Fortnow \cite{fortnow2009entropy} make this argument more explicit.  Notice that taking $\mu$ to be the uniform distribution maximizes the entropy created at each step of the algorithm (at least on finite spaces), so it is easiest to make an entropy compression argument in that case.
 
 After the Moser and Tardos paper, interest in the subject has only increased; follow-up work has given new algorithms, new problem domains, new applications, and a range of sufficient conditions weaker than the LLL condition.  Our interest, and the subject of this paper, is in strengthening the Moser-Tardos result from the \emph{variable} version of the problem to more general versions, under analogous conditions.  The key proof idea is taking the entropy compression argument seriously. %FIXME: Language.  Sounds arrogant.
 
 \subsection{This paper}
-In this paper, we first review the result by Moser and Tardos, using the more illuminating proof by Tao \cite{tao2009entropy} and Fortnow \cite{fortnow2009entropy} that directly highlights the role of entropy compression.  In section \ref{sec:perfect}, we review an extension of the algorithmic LLL to non-variable problems by Achlioptas and Iliopoulos \cite{achlioptas2014random}.  Achlioptas and Iliopoulos give a general condition on \emph{algorithms} rather than problems, and bring us partway to a general constructive LLL, but they require that the space $\Omega$ is finite, and this is the restriction we will remove.  In section \ref{sec:examples} we give a series of examples suggesting the entropy compression argument could be fruitfully extended to novel LLL-like applications in which the state vector of an algorithm cannot be uniquely recovered.  Achlioptas and Iliopoulos call such algorithms (or, technically, their associated random walk graphs) ``non-atomic''.  By removing the atomicity assumption, we can develop a more general constructive LLL.  In section \ref{sec:nonatomic}, we give a formal proof.  %FIXME: Language.
+In this paper, we first review the result by Moser and Tardos, using the more illuminating proof by Tao \cite{tao2009entropy} and Fortnow \cite{fortnow2009entropy} that directly highlights the role of entropy compression.  In section \ref{sec:perfect}, we review an extension of the algorithmic LLL to non-variable problems by Achlioptas and Iliopoulos \cite{achlioptas2014random}.  Achlioptas and Iliopoulos give a general condition on \emph{algorithms} rather than problems, and bring us partway to a general constructive LLL, but they require that the space $\Omega$ is finite, and this is the restriction we will remove.  In section \ref{sec:nonatomic-intro} we suggest that the entropy compression argument could be fruitfully extended to novel LLL-like applications in which the state vector of an algorithm cannot be uniquely recovered.  Achlioptas and Iliopoulos call such algorithms (or, technically, their associated random walk graphs) ``non-atomic''.  By removing the atomicity assumption, we can develop a more general constructive LLL. In section \ref{sec:examples} we give a series of motivating examples.  In section \ref{sec:markov}, we discuss an interpretation of the entropy compression argument as a statement about Markov chains and associated hidden Markov chains.  Finally, in section \ref{sec:nonatomic}, we give formal proofs.
+%FIXME: Not clear this is a good organization.
 
 \section{The algorithmic LLL}
 \label{sec:lll}
@@ -478,15 +506,18 @@ So we can encode $Y$ using at most $n + m + (k - C_0 + 2)t$ bits, and we can det
 This is violated if $t \geq \frac{m}{C_0 - 2}$, so the algorithm must finish (in expectation) before that many iterations.  We have also shown that the algorithm must finish in expectation before $\frac{m}{C_0 - \log_2 \frac{1}{0.3383}} + O(1)$ iterations.  Moser and Tardos give a more careful argument considering the witness tree explicitly as a draw from a particular Galton-Watson process, bringing $C_0$ down to $\log_2 e$.  (This implies that the witness trees generated by algorithm \ref{alg:mt-recursive} are not uniformly distributed on the possible trees of fixed size.)
 
 \subsection{Arbitrary starting state}
+\label{subsec:arbitrary}
 Note also that a similar proof would still work, with a worse bound, if we eliminated the requirement that the algorithm started in a uniform random state.  If the starting state is arbitrary, then it may have entropy $0$, and inequality \ref{eqn:ksat-entropy-inequality} would become
 \seqn
   n + m + (k - C_0 + 2)t &\leq k t \\
   \implies t \leq \frac{n+m}{C_0-2} .
 \eeqn
-So we pay an additive penalty (at least according to this upper bound) equal to the dimension of the problem.  We will see this later when we review \cite{achlioptas2014random}.
+So we pay an additive penalty (at least according to this upper bound) equal to the dimension of the problem.  More generally, we pay a cost of $\log_2 |\Omega|$ when $\Omega$ is finite.  We will see this later when we review \cite{achlioptas2014random}.
 %FIXME: Explain this better.
+%FIXME: Forward-reference the section where we discuss this.
 
 \subsection{General LLL problems}
+\label{subsec:general-lll}
 The proof above was restricted to \ksat.  In this subsection we outline the proof of the constructive LLL in full generality.
 
 The important difference between \ksat and general LLL problems is that \ksat events are \emph{elementary}: For every flaw $A_i$, only a single assignment to the variables in $\operatorname{vbl}(A_i)$ causes $A_i$ to happen.  This allowed us to reconstruct the algorithm state vector $Y$ given only the final state $\sigma_{t}$ and the vector of flaws addressed $(A_1, \cdots, A_t)$.  Each flaw could be addressed using $\log_2 (d+1) + C_0$ bits, but from its identity we reconstructed one out of $2^k$ possible assignments, $k = \log_2 2^k = \log_2 (1/p)$ bits of information.  The contradiction arose because $\log_2 (1/p) > \log_2 (d+1) + C_0$, which is exactly the LLL condition.
@@ -513,7 +544,7 @@ This condition is more complicated and unnecessary for exposition, so we have  f
   &= x(A_i) \prod_{j \in \Gamma(i)} (1 - x(A_j)) .
 \eeqn
 
-The proof of the constructive LLL under condition \ref{eqn:general-lll-req} uses the condition to construct a Galton-Watson process whose entropy lower-bounds that of the witness trees actually generated by algorithm \ref{}.  Moser and Tardos do not use those terms explicitly.  Instead, they bound the probability of any tree appearing with a particular root and sum those probabilities over trees and roots to bound the expected number of elements of a witness tree.  It would be interesting to give a version of the proof that more explicitly relies on the entropy compression argument, but we will not do that here.
+The proof of the constructive LLL under condition \ref{eqn:general-lll-req} uses the condition to construct a Galton-Watson process whose entropy lower-bounds that of the witness trees actually generated by algorithm \ref{alg:mt-recursive}.  Moser and Tardos do not use the word ``entropy'' explicitly anywhere in their paper.  Instead, they bound the probability of any tree appearing with a particular root and sum those probabilities over trees and roots to bound the expected number of elements of a witness tree.  It would be interesting to give a version of the proof that more explicitly relies on the entropy compression argument, but we will not do that here.
 %FIXME
 
 \section{The algorithmic LLL on general sample spaces}
@@ -522,36 +553,37 @@ Thus far, we have seen only a variable-version LLL problem in which our probabil
 %FIXME: These are weak examples.
 The proof of Moser and Tardos assumes a \emph{particular} search algorithm and applies to a \emph{somewhat broad} class of problems, but it would be nice to have a way to prove efficiency of a broader class of algorithms (and perhaps for an even broader class of problems).  Achlioptas and Iliopoulos \cite{achlioptas2014random} take a step in this direction, providing an elegant framework for proving efficiency of random local search algorithms in arbitrary finite spaces.  Examining this framework is instructive.
 
-Again take our $\sigma$-algebra to be $(\Omega, \Sigma)$, but this time without a product structure and without even a measure $\mu$.  Our set of flaws is the same as before, but now there can be no notion of $\operatorname{vbl}(A_i)$.  Let $U(\sigma)$ denote the set of flaws that happen under state $\sigma$.  Again, our goal is to find a flawless element $\sigma^* \in \Omega$.  Consider any randomized iterative algorithm whose random state is Markovian and stationary, which attempts to find a flawless object.  (The MT algorithm is an example of such an algorithm.)  By definition, we can view such algorithms as random walks $\mathcal{T}$ on $\Omega$.
+Again take our $\sigma$-algebra to be $(\Omega, \Sigma)$, but this time without a product structure and without even a measure $\mu$.  Our set of flaws is the same as before, but now there can be no notion of $\operatorname{vbl}(A_i)$.  Let $U(\sigma)$ denote the set of flaws that happen under state $\sigma$.  Again, our goal is to find a flawless element $\sigma^* \in \Omega$.  Consider any randomized iterative algorithm whose random state is Markovian and stationary, which attempts to find a flawless object.  (The MT algorithm is an example of such an algorithm.)  By definition, we can view any such algorithm as a random walk $\mathcal{T}$ on a graph whose nodes are $\Omega$ and whose edge-weights define a transition matrix for the walk.
 
-The argument in section \ref{sec:lll} was really an argument about %FIXME
-Now let us try to write down the properties of this graph that are really needed for something like the proof in section \ref{sec:lll} to apply.
+%The argument in section \ref{sec:lll} was really an argument about %FIXME
+Now let us try to write down the properties of these graphs that are really needed for something like the proof in section \ref{sec:lll} to apply.
 
-%FIXME: s/_t/_s/
-The first requirement is ``accountability of action.''  In Tao's proof, we needed the fact that the flaw $A_t$ addressed on iteration $t$ uniquely determined the values of $\operatorname{vbl}(A_t)$ in the previous state $\sigma_t$.  We proved this by assuming, by induction, that we knew the values of the variables in $\sigma_{t+1}$.  Given the identity of the flaw, we knew that $\sigma_t$ and $\sigma_{t+1}$ differed only on the variables in $\operatorname{vbl}(A_t)$ differed.  Further, since each flaw could be violated by only one configuration of its variables, we knew what that configuration must have been in $\sigma_t$.  Without variables, we need a different tack to get a correspondence between flaw vectors and algorithm state vectors.  We will still assume that the algorithm ``addresses'' a single flaw on each iteration; given a current state $\sigma_t$ and a flaw to address, the algorithm draws from some distribution to find its next action.  To achieve accountability, we assume that, for every (flaw, state) pair $(A_{t}, \sigma_{t+1})$, there is a unique previous state $\sigma_t$.  In terms of the random walk graph, this means that if we label each weighted edge in the graph with the flaw we addressed at that step, each node has at most one incoming edge for each flaw.  This requirement is called ``atomicity.''
+The first requirement is ``atomicity,'' which generalizes Moser's and Tardos' concept of ``elementary'' flaws in section \ref{subsec:general-lll}.  We needed the fact that the flaw $A_s$ addressed on iteration $s$ uniquely determined the values of $\operatorname{vbl}(A_s)$ in the previous state $\sigma_s$.  We proved this by assuming, by induction, that we knew the values of the variables in $\sigma_{s+1}$.  Given the identity of the flaw, we knew that $\sigma_s$ and $\sigma_{s+1}$ differed only on the variables in $\operatorname{vbl}(A_s)$ differed.  Further, since each flaw could be violated by only one configuration of its variables, we knew what that configuration must have been in $\sigma_s$.  Without variables, we need a different tack to get a correspondence between flaw vectors and algorithm state vectors.  We will still assume that the algorithm ``addresses'' a single flaw on each iteration; given a current state $\sigma_t$ and a flaw to address, the algorithm draws from some distribution to find its next action.  (The transition probabilities for each node are obtained by marginalizing out the flaw selection distribution.)  To achieve accountability, we assume that, for every (flaw, state) pair $(A_{s}, \sigma_{s+1})$, there is a unique previous state $\sigma_s$.  In terms of the random walk graph, this means that if we label each weighted edge in the graph with the flaw we addressed at that step, each node has at most one incoming edge for each flaw.  This property is called atomicity.
 
 In the variable version of the problem, there are two simple sufficient conditions for atomicity:
 \begin{description}
-  \item[Simple constraints:] For each flaw $A_i$, there is only one configuration of the variables $\operatorname{vbl}(A_i)$ that makes the flaw happen.  This condition is unimportant, since we can always modify the algorithm (for purposes of proofs) to make it so.  We will discuss this further in section \ref{sec:nonatomic}.
-  \item[Algorithmic focusing:] After choosing a flaw $A_t$, the algorithm modifies \emph{only} the variables in $\operatorname{vbl}(A_t)$ on iteration $t$.  This condition is nontrivial.
+  \item[Simple constraints:] For each flaw $A_i$, there is only one configuration of the variables $\operatorname{vbl}(A_i)$ that makes the flaw happen.  This condition is unimportant, since we can always modify the algorithm (for purposes of proofs) to make it so.  We will discuss this further in section \ref{subsec:trivial}.
+  \item[Algorithmic focusing:] After choosing a flaw $A_s$, the algorithm modifies \emph{only} the variables in $\operatorname{vbl}(A_s)$ on iteration $s$.  This condition is nontrivial.
 \end{description}
 
-The second requirement is analogous to the standard LLL condition $e p (d+1)$ (though other, more elaborate results are proven in \cite{achlioptas2014random}).  In section \ref{sec:lll}, we saw that it was desirable (from the perspective of the entropy compression argument) to maximize the entropy of each step.  So we will assume that, having chosen a flaw $A_t$ to address, our algorithm chooses uniformly at random from all the possible next states it could reach.  We call this ``action set'' $A(A_t, \sigma_t)$.  (In the variable version, this would have been of size $2^{\operatorname{vbl}(A_t)}$ for any $\sigma_t$.)  Then, the requirement is that no flaw $A_i$ has too many neighbors with small action sets; specifically,
+The second requirement is analogous to the standard LLL condition $e p (d+1)$ (though other, more elaborate results are proven in \cite{achlioptas2014random}).  In section \ref{sec:lll}, we saw that it was desirable (from the perspective of the entropy compression argument) to maximize the entropy of each step.  So we will assume that, having chosen a flaw $A_s$ to address, our algorithm chooses uniformly at random from all the possible next states it could reach.  We call this ``action set'' $A(A_s, \sigma_s)$.  (In the variable version with binary variables, this would have been of size $2^{\operatorname{vbl}(A_s)}$ for any $\sigma_s$.)  Then, the requirement is that no flaw $A_i$ has too many neighbors with small action sets; specifically,
 \seqn
   \label{eqn:degree-req}
   e \sum_{j \in \Gamma(i)} \frac{1}{\min_{\sigma: A_j \in U(\sigma)} |A(\sigma, A_j)|} < 1 - \delta
 \eeqn
 for some positive $\delta$.
+%FIXME: Rephrase the previous results in terms of \delta; this language is clearer.
+%FIXME: Note that A-I have the uniformity assumption, which we could relax later.
 
-Under these two requirements, Achlioptas and Iliopoulos show that any such algorithm will terminate quickly.  In that case, the running time of the random walk algorithm is $\delta^{-1} (\log_2 |\Omega| + |U(\sigma_1)| + s)$ steps with probability at least $1 - 2^{-s}$.
-
-Interestingly, instead of using a measure $\mu$ on $(\Omega, \Sigma)$, requirement \ref{eqn:degree-req} is entirely in terms of the random walk graph, and it is independent of the starting location $\sigma_1$.  The proof does not require any entropy in the starting state.  Still, the main point of our interest in \cite{achlioptas2014random} is the clear statement of the atomicity requirement.
+Under these two requirements, Achlioptas and Iliopoulos show that any such algorithm will terminate quickly.  The running time of the random walk algorithm is $\delta^{-1} (\log_2 |\Omega| + |U(\sigma_1)| + s)$ steps with probability at least $1 - 2^{-s}$.  Though this is a high-probability bound rather than a bound in expectation, it is similar to the running time we found in section \ref{sec:lll}.  Here $|U(\sigma_1)|$, the number of flaws in the initial assignment, stands in for $m$, which we used to upper-bound the same quantity in section \ref{sec:lll}.  The $\log_2 |\Omega|$ term is introduced because Achlioptas and Iliopoulos assume an arbitrary starting location; we found the same additive constant in section \ref{subsec:arbitrary}.  And $\delta^{-1}$ is a slack term analogous to $C_0 - 2$.
+%FIXME: When we rephrase the above stuff in terms of \delta there will be a direct correspondence.
+The main point of our interest in \cite{achlioptas2014random} is the clear statement of the atomicity requirement, and we will not revise their proof.  Note that, by working directly with the random walk graph and paying the extra $\log_2 |\Omega|$ cost in running time, Achlioptas and Iliopoulos avoid assuming a measure $\mu$ on $(\Omega, \Sigma)$.  We will have to reintroduce the measure when we attempt to generalize their result to infinite spaces.  This seems to be a very mild restriction.
 
 \section{Non-atomic algorithms}
-\label{sec:nonatomic}
-In sections \ref{sec:lll} and \ref{sec:perfect}, we saw that the \emph{atomicity} of an \mt algorithm was a key assumption in the entropy-compression argument.  In this section, we conjecture that similar arguments could be made without the atomicity assumption.  It would be very interesting if this conjecture held, since it could open up the algorithmic LLL to applications outside combinatorial search.  We look forward to following up on this conjecture in future work, but for now we will just sketch some arguments.  The work in this section is, to our knowledge, original.
+\label{sec:nonatomic-intro}
+In sections \ref{sec:lll} and \ref{sec:perfect}, we saw that the \emph{atomicity} of an \mt algorithm was a key assumption in the entropy-compression argument.  In this section, we show that similar arguments can be made without the atomicity assumption.  This raises the possibility of using the algorithmic LLL in applications outside combinatorial search.
 
-Recall that assumptions on the degree of nodes in the transformation graph of an \mt algorithm allowed us to show that the identity of the flaw addressed at each step could be encoded using fewer bits on average than would be needed to encode the randomness involved in making the step itself.  Assuming atomicity (recall its two requirements: (1) simple constraints and (2) algorithmic focusing) then gave us a way to exactly reconstruct the state of the algorithm before the step was taken.  Now, let us abstractly write $Z$ for a vector of algorithm states (in the MT algorithm for \ksat, the concatenation of the original uniform assignment bits and the vectors of $k$ bits used at each iteration); $Y$ for the hypothetical observed information that encodes information sufficient to reconstruct the algorithm states (in our explication of Tao's MT proof, this includes the witness forest, the set of flaws of the initial assignment, and the final assignment); and $\operatorname{Infer}$ for the deterministic function that maps $Y$ to $Z$.  Then the purpose of the atomicity assumption is that $P(Z | Y)$ is a point mass measure at $\operatorname{Infer}(Y)$.
+Recall that assumptions on the degree of nodes in the transformation graph of an \mt algorithm allowed us to show that the identity of the flaw addressed at each step could be encoded using fewer bits on average than would be needed to encode the randomness involved in making the step itself.  Assuming atomicity (recall its two requirements: (1) simple constraints and (2) algorithmic focusing) then gave us a way to exactly reconstruct the state of the algorithm before the step was taken.  Now, let us abstractly write $Z$ for a vector of algorithm states (in the MT algorithm for \ksat, the concatenation of the original uniform assignment bits and the vectors of $k$ bits used at each iteration); $Y$ for the hypothetical observed information that encodes information sufficient to reconstruct the algorithm states (in our explication of Tao's MT proof, this includes the witness forest, the set of flaws of the initial assignment, and the final assignment); and $\operatorname{Infer}$ for the deterministic function that maps $Y$ to $Z$.  Write $P(Z | Y)$ for the posterior distribution (after Bayesian updating) on the true algorithm state vector given the alternative information.  The purpose of the atomicity assumption is that $P(Z | Y)$ is a point mass measure at $\operatorname{Infer}(Y)$.
 
 Existing work, including \cite{achlioptas2014random}, assumes that it is necessary for $P(Z | Y)$ to be a point mass, but what would it mean if it were not?  We could recast the original entropy compression argument as a \emph{relative entropy compression} argument.
 
@@ -570,15 +602,17 @@ When $P(Z | Y)$ is a point mass, $H(Z | Y) = 0$, and inequality \ref{eqn:entropy
   \label{eqn:entropy-tao}
   H(Z) \leq N .
 \eeqn
-This is exactly the fact that we needed in Tao's proof to show a contradiction when $t$ was too large.
+This is exactly the fact that we needed in section \ref{sec:lll} to show a contradiction when $t$ was too large.
 
-From this perspective, it does not seem strictly necessary that $H(Z | Y) = 0$.  Perhaps in some cases we can use inequality \ref{eqn:entropy-encoded} or equation \ref{eqn:entropy-general} with some other upper bounds on $H(Z | Y)$ or $H(Z)$ to make an argument like Tao's.  We will consider two examples to illustrate this point.
+From this perspective, it does not seem strictly necessary that $H(Z | Y) = 0$ or that $Y$ and $Z$ be representable by finitely many bits.  Perhaps in some cases we can use inequality \ref{eqn:entropy-encoded} or equation \ref{eqn:entropy-general} with some other upper bounds on $H(Z | Y)$ or $H(Z)$ to make an entropy compression argument.  We will consider several examples to illustrate this point.
 
+\section{Examples}
+\label{sec:examples}
 \subsection{Example 1 (trivial)}
 \label{subsec:trivial}
 As a trivial example, suppose that we have run the MT algorithm for a \ksat problem and encoded the alternative information in $Y$ using a bit string of size at most $h$ for each iteration, as in Tao's proof.  Imagine removing one bit of information from each iteration's bit string in such a way that we can infer from it only a uniform distribution over $2^c$ potential flaws; call this reduced alternative information $Y'$, with encoding length $N' = N - ct$.  This ensures there are $2^{ct}$ possible flaw-encodings, and thus (by atomicity of the underlying MT algorithm for \ksat) our posterior on $Z$, having observed $Y'$, is a uniform distribution over $2^{ct}$ state vectors.  Then we could use Tao's argument to show that inequality \ref{eqn:entropy-encoded} is violated under exactly the conditions when it was violated for $Y$, since $H(Z | Y') + N' = H(Z | Y) + 2^{ct} + N - 2^{ct} = H(Z | Y) + N$.
 
-We can use exactly the same argument to apply Tao's proof in a situation where the ambiguity in $P(Z | Y)$ is induced by non-atomicity of the transformation graph, rather than by the artificial removal of information from $Y$.  So why do we call this example trivial?  It only violates the first condition for atomicity in the framework of Achlioptas and Iliopoulos, which is that if we observe state $\sigma_{t+1}$ after a flaw $f$ is addressed, there is only one possibility for the previous state $\sigma_t$.  They call this condition ``syntactic,'' since it can always be addressed by expanding the flaw set to make flaws more granular.  For example, say that we have a modified version of \ksat in which $2^c$ out of $2^k$ assignments to each clause can make it fail.  We can rephrase any such problem as an ordinary \ksat problem by making $2^c$ copies of each clause, with each copy only disallowing one state.  This would increase the size of $F$ by $2^c$ and increase by $c$ the number of bits required to describe any flaw in the alternative information.  So the argument in our trivial example does not buy us any extra power in handling non-atomicity, only an alternative proof of Achlioptas' and Iliopoulos' comment.
+We can use exactly the same argument to apply Tao's proof in a situation where the ambiguity in $P(Z | Y)$ is induced by non-atomicity of the transformation graph, rather than by the artificial removal of information from $Y$.  So why do we call this example trivial?  It only violates the first condition for atomicity in the framework of Achlioptas and Iliopoulos, which is that if we observe state $\sigma_{t+1}$ after a flaw $f$ is addressed, there is only one possibility for the previous state $\sigma_t$.  They call this condition ``syntactic,'' since it can always be addressed (when $\Omega$ is finite) by expanding the flaw set to make flaws more granular.  For example, say that we have a modified version of \ksat in which $2^c$ out of $2^k$ assignments to each clause can make it fail.  We can rephrase any such problem as an ordinary \ksat problem by making $2^c$ copies of each clause, with each copy only disallowing one state.  This would increase the size of $F$ by $2^c$ and increase by $c$ the number of bits required to describe any flaw in the alternative information.  So the argument in our trivial example does not buy us any extra power in handling non-atomicity, only an alternative proof of Achlioptas' and Iliopoulos' comment.  And in the framework of Moser and Tardos, it buys us nothing, since they do not require atomicity, but rather a bound $p$ on the marginal probability of flaws.
 
 \subsection{Example 2 (Uncountable feasible set)}
 \label{subsec:uncountable}
@@ -590,7 +624,7 @@ Now let us see an example of a problem and algorithm that are covered by the Mos
 \eeqn
 where the $A_i$ are indicator functions $\Reals^{m} \to \{0,1\}$.
 
-We can write down an MT algorithm to solve this problem.  This will add some assumptions, two of which we must discuss before even writing down the algorithm.  First, we assume that each function depends only on a subset of the elements of the vector $x$; let $\operatorname{vbl}(f) \subseteq [n]$ denote the indices on which a function $f$ depends, and let $y[\operatorname{vbl}(f)]$ denote the corresponding elements of a vector $y$.  Second, we must write down a \emph{product measure} $\mu = \prod_{j=1}^{n} \mu_j$ on $\Reals^n$, where each $\mu_j$ is a measure on $\Reals$.  During the algorithm, we must be able to sample from $\mu$ and from product measures of the form $\prod_{j \in \operatorname{vbl}(A_i)} \mu_j$.  Later we will have to impose additional constraints on $\mu$, but for now imagine that $\mu_j = N(0, 1)$ for each $j$.
+We can write down an MT algorithm to solve this problem.  This will add some assumptions, two of which we must discuss before even writing down the algorithm.  First, we assume that each function depends only on a subset of the elements of the vector $x$; let $\operatorname{vbl}(f) \subseteq [n]$ denote the indices on which a function $f$ depends, and let $y[\operatorname{vbl}(f)]$ denote the corresponding elements of a vector $y$.  Second, we must write down a \emph{measure} $\mu = \prod_{j=1}^{n} \mu_j$ on $\Reals^n$, where each $\mu_j$ is a measure on $\Reals$.  During the algorithm, we must be able to sample from $\mu$ and from product measures of the form $\prod_{j \in \operatorname{vbl}(A_i)} \mu_j$.  Later we will have to impose additional constraints on $\mu$, but for now imagine that $\mu_j = N(0, 1)$ for each $j$.
 
 \begin{algorithm}[H]
 \caption{An MT-like algorithm for problem \ref{prob:feas}.}
@@ -606,7 +640,7 @@ We can write down an MT algorithm to solve this problem.  This will add some ass
   \If{$A_i(x) = 0$}
     \Return
   \EndIf
-  \State Resample $x[\operatorname{vbl}(A_i)]$ from $\prod_{j \in \operatorname{vbl}(A_i)}$.
+  \State Resample $x[\operatorname{vbl}(A_i)]$ from $\prod_{j \in \operatorname{vbl}(A_i)} \mu_j$.
   \ForAll{$k \in [m]: k \in \Gamma(i), A_k(x) = 1$}
     \Call{Fix}{$k$}
   \EndFor
@@ -618,45 +652,42 @@ We can write down an MT algorithm to solve this problem.  This will add some ass
 Moser and Tardos prove that this algorithm finishes in polynomial time under the following conditions:
 
 \begin{enumerate}
+  \item $n$ is finite. \label{eqn:feas-finitedim-condition}
   \item Each $A_i$ is $\mu$-measurable and satisfies $\mu(\{x: A_i(x) = 1\}) \leq p$ for some small $p$.  That is, random sampling from our measure $\mu$ satisfies each single constraint with high probability.  (The difficulty of the problem comes from the requirement of satisfying the constraints \emph{jointly}.)  Otherwise the constraints can be arbitrarily complicated.  \label{eqn:feas-margprob-condition}
+  \item $\mu$ is a product measure $\prod_{j=1}^{n} \mu_j$, where each $\mu_j$ is a measure on $\Reals$.  During the algorithm, we must be able to sample from $\mu$ and from product measures of the form $\prod_{j \in \operatorname{vbl}(A_i)} \mu_j$.  \label{eqn:feas-prodmeasure-condition}
   \item The dependency graph induced by the constraints and the measure $\mu$ meets the usual LLL condition: $e p (d+1) < 1$. \label{eqn:feas-lowdep-condition}
 \end{enumerate}
 
-
-%FIXME
-
-, but their proof relies on the finiteness of $n$.  The proof of Achlioptas and Iliopoulos would need no assumptions on $n$, but it requires that $m$ be finite and fails when the sample space $\Omega$ is infinite (even countably so), as in this case.  The Moser-Tardos assumptions are:
-
-
-\begin{enumerate}
-%FIXME: Some of these comments are useful to have here.
-  \item We chose our sample space to be a norm ball in finite dimensions, rather than say all of $\Reals^n$, precisely so that our sample space would be compact, allowing us to choose a simple probability measure as our dominating measure when computing entropies.  In general, to bound the number of steps taking by the algorithm, we need a probability measure that $Y$-almost surely dominates $P(Z | Y)$, for which the LLL-required marginal flaw probabilities hold, and which induces low dependency degree among the flaws.
-  \item We chose the infinity norm ball in particular for a different reason: the sample space needs to be an axis-aligned rectangle, or it is not easy to ensure that the resampling step keeps us inside it while modifying only $k$ variables at a time and covering a large volume.  Again, this is not important for proving something about the number of steps taken by the algorithm, but it is important for the efficiency of the individual steps.
-  \item Rather than augment $Y$ to pin down $Z$, we could imagine proving directly that $H(Z | Y)$ is small.  It is natural to view $Z$ and $Y$ as the states and observations of a hidden Markov model, respectively, and use any of the well-known algorithms for inference in HMMs to compute $P(Z | Y)$.  (Such inference could be quite difficult if the constraint functions are complicated, but for purposes of analysis we could imagine performing it.)  At least in this case, augmenting $Y$ was much simpler, but this makes the example weaker, since we are not taking advantage of our freedom in making $H(Z | Y) > 0$.
-  \item With respect to the constraint functions themselves, the algorithm can be made efficient as long as we have an oracle that can efficiently find a violated constraint when there is one.  It may be possible to have an efficient version of the algorithm testing only a core of $\operatorname{poly}(n)$ ``core'' constraints using the ideas of Haeupler et al \cite{haeupler2011new}.
-\end{enumerate}
+% \begin{enumerate}
+% %FIXME: Some of these comments are useful to have here.
+%   \item We chose our sample space to be a norm ball in finite dimensions, rather than say all of $\Reals^n$, precisely so that our sample space would be compact, allowing us to choose a simple probability measure as our dominating measure when computing entropies.  In general, to bound the number of steps taking by the algorithm, we need a probability measure that $Y$-almost surely dominates $P(Z | Y)$, for which the LLL-required marginal flaw probabilities hold, and which induces low dependency degree among the flaws.
+%   \item We chose the infinity norm ball in particular for a different reason: the sample space needs to be an axis-aligned rectangle, or it is not easy to ensure that the resampling step keeps us inside it while modifying only $k$ variables at a time and covering a large volume.  Again, this is not important for proving something about the number of steps taken by the algorithm, but it is important for the efficiency of the individual steps.
+%   \item Rather than augment $Y$ to pin down $Z$, we could imagine proving directly that $H(Z | Y)$ is small.  It is natural to view $Z$ and $Y$ as the states and observations of a hidden Markov model, respectively, and use any of the well-known algorithms for inference in HMMs to compute $P(Z | Y)$.  (Such inference could be quite difficult if the constraint functions are complicated, but for purposes of analysis we could imagine performing it.)  At least in this case, augmenting $Y$ was much simpler, but this makes the example weaker, since we are not taking advantage of our freedom in making $H(Z | Y) > 0$.
+%   \item With respect to the constraint functions themselves, the algorithm can be made efficient as long as we have an oracle that can efficiently find a violated constraint when there is one.  It may be possible to have an efficient version of the algorithm testing only a core of $\operatorname{poly}(n)$ ``core'' constraints using the ideas of Haeupler et al \cite{haeupler2011new}.
+% \end{enumerate}
 
 In our next example, we will remove the finite-dimensionality restriction.
 
-\subsection{Example 3 (Uncountable, infinite-dimensional feasible set)}
+\subsection{Example 3 (Infinite-dimensional feasible set)}
 
-\label{subsec:uncountable}
+\label{subsec:infinitedim}
 Now consider the following modified feasibility problem:
 \seqn
-  \label{prob:feas}
-  \operatorname{Find} & x \in L_2(\mu) \texttt{s.t.} \\ %FIXME: L_2?
-  A_i(x) = 0 \forall i \in [m] ,
+  \label{prob:feas-infinitedim}
+  \operatorname{Find} & x \in \Omega \\
+  A_i(x) = 0 \forall A_i \in \mathcal{A} .
 \eeqn
-where the $A_i$ are \emph{arbitrary} indicator functions $\Reals^{m} \to \{0,1\}$ and $\mu$ is a probability measure on a probability space $(\Omega, \Sigma)$.  We will assume later that each function depends only on a subset of the elements of the vector $x$; let $\operatorname{vbl}(z) \subseteq [n]$ denote the indices on which a function depends, and let $y[\operatorname{vbl}(z)]$ denote the corresponding elements of a vector $y$.  Finally, let $\mu^d$ denote the uniform measure on $\mathcal{B}(1, d, ||\cdot||_\infty)$.
+Again the $A_i$ are \emph{arbitrary} indicator functionals $\Omega \to \{0,1\}$, though now there may be infinitely many of them.
+We assume $\Omega$ is a Hilbert space so that it admits a countable basis, and we endow it with a probability measure $\mu$.  (For example, we could be optimizing over functions on some underlying space, and $\mu$ could be a Gaussian process measure.)  Let $(\phi_j)_{j \in \Nats} \in \Omega^{\Nats}$ be a countable basis for $\Omega$, and let $\phi(x) = (\inprod{\phi_j}{x} \phi_j)_{j \in \Nats} \in \Omega^{\Nats}$ be the basis representation of an element $x \in \Omega$.  Again, we will assume that each constraint functional depends only on a subset of the elements of $\phi(x)$; let $\operatorname{vbl}(z) \subseteq \Nats$ denote the indices of basis elements on which a constraint functional $z$ depends, and let $\phi(y)[\operatorname{vbl}(z)]$ denote the corresponding elements of the basis representation of $y \in \Omega$.  Finally, for $A \subset \Nats$ a (possibly infinite) subset of indices for basis elements, and $a$ a vector of weights for those elements, let $P_{|B}(E | a)$ denote the conditional $\mu$-measure of event $E$ given the event $(\phi[A])^{-1}(a)$.  This generalizes the projections of product measures from which we resampled variable subsets in the finite example.  Having eliminated the assumption that $\mu$ is a product measure, this is a natural distribution for resampling.
 
-It is straightforward to write down an MT algorithm for solving this problem:
+We can write down an MT-\emph{like} algorithm for solving this problem:
 
 \begin{algorithm}[H]
-\caption{An MT-like algorithm for problem \ref{prob:feas}.}
-\label{alg:mt-feas}
+\caption{An MT-like algorithm for problem \ref{prob:feas-infinitedim}.}
+\label{alg:mt-feas-infinitedim}
 \begin{algorithmic}[1]
 
-\State Initialize $x \hasDist \operatorname{Unif(\mathcal{B}(1, n, ||\cdot||_\infty))}$.
+\State Initialize $x \hasDist \mu$.
 \ForAll{$i \in [m]$}
   \Call{Fix}{i}
 \EndFor
@@ -665,7 +696,7 @@ It is straightforward to write down an MT algorithm for solving this problem:
   \If{$A_i(x) = 0$}
     \Return
   \EndIf
-  \State Resample $x[\operatorname{vbl}(A_i)]$ from $\mu^{|\operatorname{vbl}(A_i)}$.
+  \State Resample $\phi(x)[\operatorname{vbl}(A_i)]$ from $P_{|\Nats \setminus \operatorname{vbl}(A_i)}(\cdot | \phi(x)[\Nats \setminus \operatorname{vbl}(A_i)])$.
   \ForAll{$j \in [m]: j \in \Gamma(i), A_j(x) = 1$}
     \Call{Fix}{j}
   \EndFor
@@ -674,51 +705,80 @@ It is straightforward to write down an MT algorithm for solving this problem:
 \end{algorithmic}
 \end{algorithm}
 
+Soon we will provide a proof that this algorithm finishes in expected polynomial time under conditions analogous to the LLL conditions.  Specifically, we will make the following assumptions:
 
-
-We will provide a proof that this algorithm finishes in expected polynomial time under conditions analogous to the LLL conditions.  Specifically, we will make the following assumptions:
+%FIXME: No idea what these should be, really.
 \begin{enumerate}
-  \item Each $A_i$ is a function of only $k$ elements of $x$.  \label{eqn:feas-sparsity-condition}
-  \item Each $A_i$ is $\mu^n$-measurable and satisfies $\mu^n(\{x: A_i(x) = 1\}) \leq 2^{-k}$.  (That is, most of the hypercube is feasible for any single constraint.)  Otherwise the constraints can be arbitrarily complicated(!)  \label{eqn:feas-margprob-condition}
-  \item The dependency graph induced by our constraints meets a slightly-strengthened version of the usual LLL condition: $2^{C_0} 2^{-k} d < 1$, for some absolute constant $C_0$.  (For reference, the usual condition is $e 2^{-k} (d + 1) < 1$.  The requirement for a strengthened condition may be an artifact of the proof.) \label{eqn:feas-lowdep-condition}
+  \item Each $A_i$ is $\mu$-measurable.
+  \item Further, each flaw must be addressed with positive probability when we resample it.  More precisely, there is a positive lower bound $p^*$ on the probability of each flaw not happening when we resample it conditional on the variables on which it does not depend, regardless of the value of those variables:
+    \seqn
+      \label{eqn:feas-condprob-condition}
+      p^* = \inf_{A_i \in \mathcal{A}} \essinf_{x \in \Omega} P_{|\Nats \setminus \operatorname{vbl}(A_i)}(\bar{A_i} | \phi(x)[\Nats \setminus \operatorname{vbl}(A_i)]) .
+    \eeqn
+    $p^*$ is analogous to $p$ in the standard LLL.
+  \item The dependency graph induced by our constraints meets a slightly-strengthened version of the usual LLL condition: $2^{C_0} p^* (d+1) < 1$, for some absolute constant $C_0$.  (If $C_0 = \log_2 e$ then this result specializes to the standard LLL.) \label{eqn:feas-lowdep-strong-condition}
 \end{enumerate}
 
-This problem now has many of the ingredients of an LLL problem.  (In fact, we can encode any instance of \ksat that satisfies the LLL conditions in this problem, mapping $x_i$ to \texttt{true} if it is in $[0,1]$ and \texttt{false} otherwise, and encoding constraints accordingly.)  The process for encoding the alternative information and constructing a witness forest from it is almost identical to that in Tao's argument.  A technical difficulty is that the sample space is uncountable, so we can no longer speak of encoding a point using bits; this is where it seems useful to use the entropy inequality \ref{eqn:entropy-general} directly.  A more practical difficulty is that we can no longer exactly reconstruct the algorithm state given the history of corrected flaws.  To fix this, it will suffice to augment the alternative information slightly.
+% Some possible alternative conditions, from A-I paper:
+% \begin{enumerate}
+%   \item Each $A_i$ is $\mu$-measurable.
+%   \item Further, each flaw must be addressed with positive probability when we resample it.  More precisely, there is a positive lower bound $p^*$ on the probability of each flaw not happening when we resample it conditional on the variables on which it does not depend, regardless of the value of those variables:
+%     \seqn
+%       \label{eqn:feas-margprob-condition}
+%       p^* = \inf_{A_i \in \mathcal{A}} \essinf_{x \in \Omega} P_{|\Nats \setminus \operatorname{vbl}(A_i)}(\bar{A_i} | \phi(x)[\Nats \setminus \operatorname{vbl}(A_i)]) .
+%     \eeqn
+%     $p^*$ is analogous to $p$ in the standard LLL.
+%   \item The dependency graph induced by our constraints meets a slightly-strengthened version of the usual LLL condition: $2^{C_0} p^* (d+1) < 1$, for some absolute constant $C_0$.  \label{eqn:feas-lowdep-condition}
+% \end{enumerate}
 
-Let us first calculate $H(Z)$ for a run of algorithm \ref{alg:mt-feas} that takes $t$ steps.  This part is easy.  We define $Z$ to be the concatenation of the initial algorithm state (a draw from $\mu^n$) and the $t$ resampling steps (equivalent to draws from $\mu^k$).  When computing entropies, we use as our reference measure $\mu^n$.  Each of our events is independent, so $H(Z) = H(U([-1,1])) (n + t k) = n + k t$.
 
-Now we define the alternative information $Y$ and find an upper bound for its entropy $H(Y)$.  We use almost the same construction as in Tao's proof: $Y$ is the concatenation of
-\begin{enumerate}
-  \item the witness forest (a number of bits, whose entropy is therefore bounded by its length),
-  \item the end state (whose entropy is at most $n$, the same as that of the initial algorithm state),
-  \item the initial set of violated constraints (which uses at most $m$ bits), and
-  \item one additional piece of information for each iteration, which was not needed in Tao's argument.  To apply Tao's argument directly, we need to exactly reconstruct each state $\sigma_t$ from $Y$.  But at each iteration, even if we know $\sigma_{t+1}$ and the rest of $Y$ tells us exactly the flaw that has been addressed, we cannot in general exactly reconstruct the previous algorithm state $\sigma_t$.  However, we can bound its support, which bounds its entropy under the dominating measure $\mu^n$, and then include addition information in $Y$ sufficient to pin down $\sigma_t$ precisely.  Under our assumptions on the problem, it turns out that this additional data has entropy at most $1$.  Given only the values of $\sigma_t$ on the $n - k$ variables outside $\operatorname{vbl}(A_t)$, we know that $\mu^n(A_t | \{(\sigma_{t+1})_i: i \notin \operatorname{vbl}(A_t)\}) \leq 2^{-k}$, since $A_t$ is independent of those variables and $\mu(A_t) \leq 2^{-k}$ by assumption \ref{eqn:feas-margprob-condition}.  This happens inside a subset of size $2^{k}$, which has $\mu^n$-measure $2^{k-n}$, so the set of possible values for $\sigma_t$ is of $\mu^n$-measure $2^{-n}$, and its entropy (with $\mu^n$ as dominating measure) is $1$. %FIXME: Make the entropy argument more precise.  We are considering each item independently, which gives an upper bound, which is all we want.
-\end{enumerate}
+%FIXME: Explain that this algorithm is not obviously implementable because the space is infinite-dimensional.  For now, could just cite some sources that use infinite-dimensional objects by representing them implicitly, and argue that this could be possible if the constraint functions behave that way.  Admit that we don't currently know of an application.
 
-From these pieces and their individual entropy bounds (the sum of which bounds the joint entropy), $H(Y) \leq m + n + (k - C_0 + 2) t$, where $C_0$ is the constant in assumption \ref{eqn:feas-lowdep-condition}.
-
-Finally, since we have pinned down $Z$ using $Y$, $H(Z | Y) = 0$.  Putting everything together, we get $m + n + (k - C_0 + 2) t \leq n + k t$, so that the algorithm must terminate (in expectation) before $t > \frac{m}{C_0 - 2}$.  We can choose $C_0 = 3$, giving us the requirement that $8 p d < 1$.  The algorithm terminates only when no constraint is violated, so the algorithm must find a satisfying solution in $m$ calls to \texttt{Fix}.  (Note that the ordinary non-constructive LLL applies to this problem, and our assumptions are slightly stronger than the LLL conditions, so a solution must exist.)
-
-Some final notes on this algorithm:
-\begin{enumerate}
-  \item We chose our sample space to be a norm ball in finite dimensions, rather than say all of $\Reals^n$, precisely so that our sample space would be compact, allowing us to choose a simple probability measure as our dominating measure when computing entropies.  In general, to bound the number of steps taking by the algorithm, we need a probability measure that $Y$-almost surely dominates $P(Z | Y)$, for which the LLL-required marginal flaw probabilities hold, and which induces low dependency degree among the flaws.
-  \item We chose the infinity norm ball in particular for a different reason: the sample space needs to be an axis-aligned rectangle, or it is not easy to ensure that the resampling step keeps us inside it while modifying only $k$ variables at a time and covering a large volume.  Again, this is not important for proving something about the number of steps taken by the algorithm, but it is important for the efficiency of the individual steps.
-  \item Rather than augment $Y$ to pin down $Z$, we could imagine proving directly that $H(Z | Y)$ is small.  It is natural to view $Z$ and $Y$ as the states and observations of a hidden Markov model, respectively, and use any of the well-known algorithms for inference in HMMs to compute $P(Z | Y)$.  (Such inference could be quite difficult if the constraint functions are complicated, but for purposes of analysis we could imagine performing it.)  At least in this case, augmenting $Y$ was much simpler, but this makes the example weaker, since we are not taking advantage of our freedom in making $H(Z | Y) > 0$.
-  \item With respect to the constraint functions themselves, the algorithm can be made efficient as long as we have an oracle that can efficiently find a violated constraint when there is one.  It may be possible to have an efficient version of the algorithm testing only a core of $\operatorname{poly}(n)$ ``core'' constraints using the ideas of Haeupler et al \cite{haeupler2011new}.
-\end{enumerate}
+%
+% This problem now has many of the ingredients of an LLL problem.  (In fact, we can encode any instance of \ksat that satisfies the LLL conditions in this problem, mapping $x_i$ to \texttt{true} if it is in $[0,1]$ and \texttt{false} otherwise, and encoding constraints accordingly.)  The process for encoding the alternative information and constructing a witness forest from it is almost identical to that in Tao's argument.  A technical difficulty is that the sample space is uncountable, so we can no longer speak of encoding a point using bits; this is where it is useful to use the entropy inequality \ref{eqn:entropy-general} directly.  A more practical difficulty is that we can no longer exactly reconstruct the algorithm state given the history of corrected flaws.  To fix this, it will suffice to augment the alternative information slightly.
+%
+% Let us first calculate $H(Z)$ for a run of algorithm \ref{alg:mt-feas} that takes $t$ steps.  This part is easy.  We define $Z$ to be the concatenation of the initial algorithm state (a draw from $\mu^n$) and the $t$ resampling steps (equivalent to draws from $\mu^k$).  When computing entropies, we use as our reference measure $\mu^n$.  Each of our events is independent, so $H(Z) = H(U([-1,1])) (n + t k) = n + k t$.
+%
+% Now we define the alternative information $Y$ and find an upper bound for its entropy $H(Y)$.  We use almost the same construction as in Tao's proof: $Y$ is the concatenation of
+% \begin{enumerate}
+%   \item the witness forest (a number of bits, whose entropy is therefore bounded by its length),
+%   \item the end state (whose entropy is at most $n$, the same as that of the initial algorithm state),
+%   \item the initial set of violated constraints (which uses at most $m$ bits), and
+%   \item one additional piece of information for each iteration, which was not needed in Tao's argument.  To apply Tao's argument directly, we need to exactly reconstruct each state $\sigma_t$ from $Y$.  But at each iteration, even if we know $\sigma_{t+1}$ and the rest of $Y$ tells us exactly the flaw that has been addressed, we cannot in general exactly reconstruct the previous algorithm state $\sigma_t$.  However, we can bound its support, which bounds its entropy under the dominating measure $\mu^n$, and then include addition information in $Y$ sufficient to pin down $\sigma_t$ precisely.  Under our assumptions on the problem, it turns out that this additional data has entropy at most $1$.  Given only the values of $\sigma_t$ on the $n - k$ variables outside $\operatorname{vbl}(A_t)$, we know that $\mu^n(A_t | \{(\sigma_{t+1})_i: i \notin \operatorname{vbl}(A_t)\}) \leq 2^{-k}$, since $A_t$ is independent of those variables and $\mu(A_t) \leq 2^{-k}$ by assumption \ref{eqn:feas-margprob-condition}.  This happens inside a subset of size $2^{k}$, which has $\mu^n$-measure $2^{k-n}$, so the set of possible values for $\sigma_t$ is of $\mu^n$-measure $2^{-n}$, and its entropy (with $\mu^n$ as dominating measure) is $1$. %FIXME: Make the entropy argument more precise.  We are considering each item independently, which gives an upper bound, which is all we want.
+% \end{enumerate}
+%
+% From these pieces and their individual entropy bounds (the sum of which bounds the joint entropy), $H(Y) \leq m + n + (k - C_0 + 2) t$, where $C_0$ is the constant in assumption \ref{eqn:feas-lowdep-condition}.
+%
+% Finally, since we have pinned down $Z$ using $Y$, $H(Z | Y) = 0$.  Putting everything together, we get $m + n + (k - C_0 + 2) t \leq n + k t$, so that the algorithm must terminate (in expectation) before $t > \frac{m}{C_0 - 2}$.  We can choose $C_0 = 3$, giving us the requirement that $8 p d < 1$.  The algorithm terminates only when no constraint is violated, so the algorithm must find a satisfying solution in $m$ calls to \texttt{Fix}.  (Note that the ordinary non-constructive LLL applies to this problem, and our assumptions are slightly stronger than the LLL conditions, so a solution must exist.)
+%
+% Some final notes on this algorithm:
+% \begin{enumerate}
+%   \item We chose our sample space to be a norm ball in finite dimensions, rather than say all of $\Reals^n$, precisely so that our sample space would be compact, allowing us to choose a simple probability measure as our dominating measure when computing entropies.  In general, to bound the number of steps taking by the algorithm, we need a probability measure that $Y$-almost surely dominates $P(Z | Y)$, for which the LLL-required marginal flaw probabilities hold, and which induces low dependency degree among the flaws.
+%   \item We chose the infinity norm ball in particular for a different reason: the sample space needs to be an axis-aligned rectangle, or it is not easy to ensure that the resampling step keeps us inside it while modifying only $k$ variables at a time and covering a large volume.  Again, this is not important for proving something about the number of steps taken by the algorithm, but it is important for the efficiency of the individual steps.
+%   \item Rather than augment $Y$ to pin down $Z$, we could imagine proving directly that $H(Z | Y)$ is small.  It is natural to view $Z$ and $Y$ as the states and observations of a hidden Markov model, respectively, and use any of the well-known algorithms for inference in HMMs to compute $P(Z | Y)$.  (Such inference could be quite difficult if the constraint functions are complicated, but for purposes of analysis we could imagine performing it.)  At least in this case, augmenting $Y$ was much simpler, but this makes the example weaker, since we are not taking advantage of our freedom in making $H(Z | Y) > 0$.
+%   \item With respect to the constraint functions themselves, the algorithm can be made efficient as long as we have an oracle that can efficiently find a violated constraint when there is one.  It may be possible to have an efficient version of the algorithm testing only a core of $\operatorname{poly}(n)$ ``core'' constraints using the ideas of Haeupler et al \cite{haeupler2011new}.
+% \end{enumerate}
 
 %\subsection{Example 3 (An Unfocused Algorithm)}
 
-\section{Future work}
-Our primary interest is in seeing whether we can find a general framework in which to apply the relative entropy compression argument.
-It would be helpful to find an example of an algorithm for which the ``focusing'' requirement of atomicity -- the requirement that only variables related to the addressed flaw be modified at each step -- is violated in a way that can be rescued by the relative entropy method. %FIXME: When example 3 above is filled in, delete this.
-We would also like to understand whether the results of \cite{achlioptas2014random} can be restated using an entropy compression argument, with the hope that our results can be extended to the non-variable setting.
+\section{A non-ergodic Markov chain interpretation}
+\label{sec:markov}
 
-In our review of the literature, several other topics interested us, though we did not get to them in this paper.  Here is a brief literature review:
-\begin{description}
-  \item[Connections to graphical model inference:] Graphical models are a very natural way to think about constraint satisfaction problems, though they are perhaps too general; sampling from the conditional distribution in a graphical model allows us to solve any CSP.  These connections are touched on in \cite{freer2010probabilistic} and more thoroughly in \cite{haeupler2011new}.  In particular, Haeupler et al introduce the \emph{conditional-LLL} distribution: Conditional on no flaw happening, what is the distribution of variables (or, in the Achlioptas and Iliopoulos setup, the distribution of states)?  They prove that the MT algorithm approximately samples from this distribution.  MCMC is a very old method for sampling in graphical models, and the MT algorithm is a very special instance that seems to have no analogue in the machine learning literature.  It would be interesting to see whether an MT-like algorithm could be a useful version of MCMC for some statistical problems (perhaps bearing provable guarantees, via a relative entropy compression argument, that are not available for other algorithms), or whether the LLL could apply to existing algorithms from machine learning.
-  \item[Parallel LLL algorithms:] Beck's algorithm was not parallel, but Alon \cite{alon1991parallel} published a parallel version soon after.  Moser and Tardos \cite{moser2010constructive} used a similar (but much simplified) idea in their original paper.  It is easy to see that the simple iterative version of their algorithm (algorithm \ref{alg:mt}) can be parallelized by resampling the variables of independent sets of flaws, though it is not trivial that this ensures the algorithm terminates in $O(\log m)$ such steps (in expectation).  More recently, Chung et al \cite{chung2014distributed} gave more practical parallel algorithms, which trade off the size of the independent set for the time taken to find such a set.  We are interested in making parallel MT-like algorithms fast in practice.  In other (unpublished) work, we have implemented some of these algorithms ourselves and found that they give reasonable performance on random \ksat instances, but they do not actually gain much from parallelism.  Given the potential connections between graphical model inference and MT-like algorithms, and the extensive work in parallelizing graphical model inference (for example, by Gonzalez et al \cite{gonzalez2011parallel}), we are curious whether such work can be applied to MT-like algorithms.  It would also be interesting to see whether the general algorithm of Achlioptas and Iliopoulos \cite{achlioptas2014random} can be parallelized in a similar fashion.
-\end{description}
+
+
+\section{Nonatomic algorithms}
+\label{sec:nonatomic}
+
+% \section{Future work}
+% Our primary interest is in seeing whether we can find a general framework in which to apply the relative entropy compression argument.
+% It would be helpful to find an example of a real algorithm for which the ``focusing'' requirement of atomicity -- the requirement that only variables related to the addressed flaw be modified at each step -- is violated in a way that can be rescued by the relative entropy method.
+% We would also like to understand whether the results of \cite{achlioptas2014random} can be restated using an entropy compression argument, with the hope that our results can be extended to the non-variable setting.
+%
+% In our review of the literature, several other topics interested us, though we did not get to them in this paper.  Here is a brief literature review:
+% \begin{description}
+%   \item[Connections to graphical model inference:] Graphical models are a very natural way to think about constraint satisfaction problems, though they are perhaps too general; sampling from the conditional distribution in a graphical model allows us to solve any CSP.  These connections are touched on in \cite{freer2010probabilistic} and more thoroughly in \cite{haeupler2011new}.  In particular, Haeupler et al introduce the \emph{conditional-LLL} distribution: Conditional on no flaw happening, what is the distribution of variables (or, in the Achlioptas and Iliopoulos setup, the distribution of states)?  They prove that the MT algorithm approximately samples from this distribution.  MCMC is a very old method for sampling in graphical models, and the MT algorithm is a very special instance that seems to have no analogue in the machine learning literature.  It would be interesting to see whether an MT-like algorithm could be a useful version of MCMC for some statistical problems (perhaps bearing provable guarantees, via a relative entropy compression argument, that are not available for other algorithms), or whether the LLL could apply to existing algorithms from machine learning.
+%   \item[Parallel LLL algorithms:] Beck's algorithm was not parallel, but Alon \cite{alon1991parallel} published a parallel version soon after.  Moser and Tardos \cite{moser2010constructive} used a similar (but much simplified) idea in their original paper.  It is easy to see that the simple iterative version of their algorithm (algorithm \ref{alg:mt}) can be parallelized by resampling the variables of independent sets of flaws, though it is not trivial that this ensures the algorithm terminates in $O(\log m)$ such steps (in expectation).  More recently, Chung et al \cite{chung2014distributed} gave more practical parallel algorithms, which trade off the size of the independent set for the time taken to find such a set.  We are interested in making parallel MT-like algorithms fast in practice.  In other (unpublished) work, we have implemented some of these algorithms ourselves and found that they give reasonable performance on random \ksat instances, but they do not actually gain much from parallelism.  Given the potential connections between graphical model inference and MT-like algorithms, and the extensive work in parallelizing graphical model inference (for example, by Gonzalez et al \cite{gonzalez2011parallel}), we are curious whether such work can be applied to MT-like algorithms.  It would also be interesting to see whether the general algorithm of Achlioptas and Iliopoulos \cite{achlioptas2014random} can be parallelized in a similar fashion.
+% \end{description}
 
 \bibliographystyle{plain}
 \bibliography{\jobname}
