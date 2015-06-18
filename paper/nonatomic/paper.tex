@@ -358,7 +358,7 @@ A less abstract (though somewhat restricted) version of the problem is the ``var
 
 For example, we can use the LLL to prove the existence of solutions to certain \ksat problems.  In applying the LLL to \ksat, we imagine a probability space on $n$ independent uniform random binary variables in which each event $A_j$ occurs if a corresponding disjunctive clause $C_j \in \mathcal{C} = \{C_1, \cdots, C_m\}$ of $k$ of the variables is false under the variable setting $X$.  (We denote by $\operatorname{vbl}(C_j)$ the set of $k$ variables of clause $C_j$.)  A flawless element $X$ is just one that satisfies all clauses.  Not every \ksat problem has a satisfying solution, so we should expect the conditions of the LLL to be restrictive.  We will come back to the \ksat example several times, since it is a very straightforward application.
 
-The original LLL does not tell us how to \emph{construct} a solution when its conditions are met.  There is an obvious Las Vegas algorithm for finding a solution -- since a solution exists, just sample from $\mathcal{P}$ until one is found.  In fact, the LLL guarantees more than the existence of a solution; it provides a lower bound on $\mu(\cap_{i \in [m]} \bar{A_i})$.  Unfortunately, this lower bound can be exponentially small, so there is no guarantee that the Las Vegas algorithm is efficient.  But a seminal paper by Beck \cite{beck1991algorithmic} showed that the LLL \emph{could} be made algorithmic.  That is, when the LLL conditions hold, certain algorithms will find a solution quickly.  This started a literature around the ``constructive'' or ``algorithmic'' LLL.  Beck's result required stronger conditions than the non-constructive LLL and worked only for particular problems (like \ksat).  In 2010, Moser and Tardos \cite{moser2009constructive,moser2010constructive} published a breakthrough meta-algorithm for finding solutions to any variable LLL problem under the same conditions as the non-constructive LLL.  In its simplest form, the MT algorithm is strikingly simple:
+The original LLL does not tell us how to \emph{construct} a solution when its conditions are met.  There is an obvious Las Vegas algorithm for finding a solution: just sample i.i.d. from $\mu$ until one is found.  The running time of this algorithm has a geometric distribution with parameter $\mu(\cap_{i \in [m]} \bar{A_i})$ (the probability that no flaw happens), so its expectation is $\frac{1}{\mu(\cap_{i \in [m]} \bar{A_i})}$.  In fact, the LLL guarantees more than the existence of a solution; it provides a strictly-positive lower bound on $\mu(\cap_{i \in [m]} \bar{A_i})$ and thus an upper bound on the expected running time of the Las Vegas algorithm.  Unfortunately, this lower bound can be exponentially small, so there is no guarantee that the Las Vegas algorithm is efficient.  But a seminal paper by Beck \cite{beck1991algorithmic} showed that the LLL \emph{could} be made algorithmic.  That is, when the LLL conditions hold, certain algorithms will find a solution quickly.  This started a literature around the ``constructive'' or ``algorithmic'' LLL.  Beck's result required stronger conditions than the non-constructive LLL and worked only for particular problems (like \ksat).  In 2010, Moser and Tardos \cite{moser2009constructive,moser2010constructive} published a breakthrough meta-algorithm for finding solutions to any variable LLL problem under the same conditions as the non-constructive LLL.  In its simplest form, the MT algorithm is strikingly simple:
 
 \begin{algorithm}[H]
 \caption{The Moser-Tardos (MT) algorithm, in simple iterative form.}
@@ -524,7 +524,7 @@ The important difference between \ksat and general LLL problems is that \ksat ev
 
 Now that we have stated the argument in this way, the general case is straightforward.  Assume that we know $\sigma_{i+1}$ and $A_i$.  Then we know that $\operatorname{vbl}(A_i)$ take values in $\sigma_i$ with joint probability at most $p$.  If $\Omega$ is discrete, then we have gained $\log_2 (1/p)$ bits of information about $\sigma_i$.  If we used only $\log_2 (d+1) + C_0$ bits to encode it, we eventually get the same contradiction.
 
-If $\Omega$ is continuous, then the same is true, except that we must make our arguments in terms of entropy rather than bits.  We have also ignored the fact that our argument was inductive, and when there is some uncertainty remaining in $\sigma_{i}$, we no longer know it exactly when we try to infer $\sigma_{i-1}$.  Both issues are surmountable, but we will defer that to section \ref{subsec:trivial}.
+If $\Omega$ is continuous, then the same is true, except that we must make our arguments in terms of an abstract differential entropy rather than bits.  We have also ignored the fact that our argument was inductive, and when there is some uncertainty remaining in $\sigma_{i}$, we no longer know it exactly when we try to infer $\sigma_{i-1}$.  Both issues are surmountable, but we will defer that to section \ref{subsec:trivial}.
 
 \subsection{The simple Moser-Tardos algorithm}
 Algorithm \ref{alg:mt-recursive} is convenient for analysis, but algorithm \ref{alg:mt} is easier to describe and implement, and it leads to parallel algorithms.  In this subsection we outline the proof of the constructive LLL with algorithm \ref{alg:mt}.
@@ -587,22 +587,23 @@ Recall that assumptions on the degree of nodes in the transformation graph of an
 
 Existing work, including \cite{achlioptas2014random}, assumes that it is necessary for $P(Z | Y)$ to be a point mass, but what would it mean if it were not?  We could recast the original entropy compression argument as a \emph{relative entropy compression} argument.
 
-Consider the state vector for $t$ steps of the \mt algorithm for \ksat, which is of size $M = m + kt$.  Then the ``prior'' on $Z$, the distribution before we observe anything, is $P(Z) = \operatorname{Unif}(2^{m+kt})$.  By Bayes' rule, $H(Y | Z) = H(Z | Y) - H(Z) + H(Y)$.  If we make the reasonable assumption that $Y$ can be recovered from the actual state vector $Z$, then $H(Y | Z) = 0$, and we have
+Consider the state vector for $t$ steps of the \mt algorithm for \ksat, which is of size $M = m + kt$.  Then the ``prior'' on $Z$, the distribution before we observe anything, is $P(Z) = \operatorname{Unif}(2^{m+kt})$.  By Bayes' rule, 
 \seqn
   \label{eqn:entropy-general}
-  H(Z) = H(Z | Y) + H(Y) .
+  H(Z) = H(Z | Y) + H(Y) - H(Y | Z) .
 \eeqn
-Typically we will proceed by finding a simple expression for the left hand side (which is typically determined explicitly by the algorithm) and upper-bounding the right hand side.  For example, if we can encode the alternative information $Y$ using $N$ bits, an upper bound on the prior entropy $H(Y)$ is $N$, and then equation \ref{eqn:entropy-general} becomes
+
+Typically we will proceed by finding a simple expression or lower bound for the left hand side (which is typically determined explicitly by the algorithm) and upper-bounding the right hand side.  Since entropies are nonnegative, we can simply drop the $H(Y | Z)$ term when searching for an upper bound, if it is convenient.  And if, for example, we can encode the alternative information $Y$ using $\hat{H}(Y)$ bits, an upper bound on the prior entropy $H(Y)$ is $\hat{H}(Y)$, and then equation \ref{eqn:entropy-general} becomes
 \seqn
   \label{eqn:entropy-encoded}
   H(Z) \leq H(Z | Y) + N .
 \eeqn
-When $P(Z | Y)$ is a point mass, $H(Z | Y) = 0$, and inequality \ref{eqn:entropy-encoded} reduces to
+(Note that we need $\operatorname{Unif}(\{0,1\}^d)$ to be a suitable base measure for computing or bounding $H(Z)$ and $H(Z | Y)$.)  When $P(Z | Y)$ is a point mass, $H(Z | Y) = 0$, and inequality \ref{eqn:entropy-encoded} reduces to
 \seqn
   \label{eqn:entropy-tao}
   H(Z) \leq N .
 \eeqn
-This is exactly the fact that we needed in section \ref{sec:lll} to show a contradiction when $t$ was too large.
+This is exactly the fact that we needed in section \ref{sec:lll} to show a contradiction when $t$ was too large, having shown that both $H(Z)$ and $N$ were affine functions of $t$.
 
 From this perspective, it does not seem strictly necessary that $H(Z | Y) = 0$ or that $Y$ and $Z$ be representable by finitely many bits.  Perhaps in some cases we can use inequality \ref{eqn:entropy-encoded} or equation \ref{eqn:entropy-general} with some other upper bounds on $H(Z | Y)$ or $H(Z)$ to make an entropy compression argument.  We will consider several examples to illustrate this point.
 
@@ -610,9 +611,13 @@ From this perspective, it does not seem strictly necessary that $H(Z | Y) = 0$ o
 \label{sec:examples}
 \subsection{Example 1 (trivial)}
 \label{subsec:trivial}
-As a trivial example, suppose that we have run the MT algorithm for a \ksat problem and encoded the alternative information in $Y$ using a bit string of size at most $h$ for each iteration, as in Tao's proof.  Imagine removing one bit of information from each iteration's bit string in such a way that we can infer from it only a uniform distribution over $2^c$ potential flaws; call this reduced alternative information $Y'$, with encoding length $N' = N - ct$.  This ensures there are $2^{ct}$ possible flaw-encodings, and thus (by atomicity of the underlying MT algorithm for \ksat) our posterior on $Z$, having observed $Y'$, is a uniform distribution over $2^{ct}$ state vectors.  Then we could use Tao's argument to show that inequality \ref{eqn:entropy-encoded} is violated under exactly the conditions when it was violated for $Y$, since $H(Z | Y') + N' = H(Z | Y) + 2^{ct} + N - 2^{ct} = H(Z | Y) + N$.
+As a trivial example, suppose that we have run the MT algorithm for a \ksat problem and encoded the alternative information in $Y$ using a bit string of size at most $h$ for each iteration, as in Tao's proof.  Imagine removing one bit of information from each iteration's bit string in such a way that we can infer from it only a uniform distribution over $2^c$ potential flaws; call this reduced alternative information $Y'$, with encoding length $N' = N - ct$.  This ensures there are $2^{ct}$ possible flaw-encodings, and thus (by atomicity of the underlying MT algorithm for \ksat) our posterior on $Z$, having observed $Y'$, is a uniform distribution over $2^{ct}$ state vectors.  Then we could use Tao's argument to show that inequality \ref{eqn:entropy-encoded} is violated under exactly the conditions when it was violated for $Y$, since $H(Z | Y') + N' = H(Z | Y) + ct + N - ct = H(Z | Y) + N$.
 
-We can use exactly the same argument to apply Tao's proof in a situation where the ambiguity in $P(Z | Y)$ is induced by non-atomicity of the transformation graph, rather than by the artificial removal of information from $Y$.  So why do we call this example trivial?  It only violates the first condition for atomicity in the framework of Achlioptas and Iliopoulos, which is that if we observe state $\sigma_{t+1}$ after a flaw $f$ is addressed, there is only one possibility for the previous state $\sigma_t$.  They call this condition ``syntactic,'' since it can always be addressed (when $\Omega$ is finite) by expanding the flaw set to make flaws more granular.  For example, say that we have a modified version of \ksat in which $2^c$ out of $2^k$ assignments to each clause can make it fail.  We can rephrase any such problem as an ordinary \ksat problem by making $2^c$ copies of each clause, with each copy only disallowing one state.  This would increase the size of $F$ by $2^c$ and increase by $c$ the number of bits required to describe any flaw in the alternative information.  So the argument in our trivial example does not buy us any extra power in handling non-atomicity, only an alternative proof of Achlioptas' and Iliopoulos' comment.  And in the framework of Moser and Tardos, it buys us nothing, since they do not require atomicity, but rather a bound $p$ on the marginal probability of flaws.
+We can use exactly the same argument to apply Tao's proof in a situation where the ambiguity in $P(Z | Y)$ is induced by non-atomicity of the transformation graph, rather than by the artificial removal of information from $Y$.  If $c$ states can lead to a single state by addressing the same flaw, then we now require that $e c p (d + 1) < 1$.
+%FIXME
+
+So why do we call this example trivial?  It only violates the first condition for atomicity in the framework of Achlioptas and Iliopoulos, which is that if we observe state $\sigma_{t+1}$ after a flaw $f$ is addressed, there is only one possibility for the previous state $\sigma_t$.  They call this condition ``syntactic,'' since it can always be addressed (when $\Omega$ is finite) by expanding the flaw set to make flaws more granular.  For example, say that we have a modified version of \ksat in which $2^c$ out of $2^k$ assignments to each clause can make it fail.  We can rephrase any such problem as an abstract \ksat-like problem by making $2^c$ copies of each clause, with each copy only disallowing one state.  This would increase the size of $\mathcal{A}$ by $2^c$ and increase by $c$ the number of bits required to describe any flaw in the alternative information.  (In terms of the conditions in Achlioptas' and Iliopoulos' work, the number of %FIXME
+So the argument in our trivial example does not buy us any extra power in handling non-atomicity, only an alternative proof of Achlioptas' and Iliopoulos' comment.  And in the framework of Moser and Tardos, it buys us nothing, since they do not require atomicity, but rather a bound $p$ on the marginal probability of flaws.
 
 \subsection{Example 2 (Uncountable feasible set)}
 \label{subsec:uncountable}
@@ -710,10 +715,10 @@ Soon we will provide a proof that this algorithm finishes in expected polynomial
 %FIXME: No idea what these should be, really.
 \begin{enumerate}
   \item Each $A_i$ is $\mu$-measurable.
-  \item Further, each flaw must be addressed with positive probability when we resample it.  More precisely, there is a positive lower bound $p^*$ on the probability of each flaw not happening when we resample it conditional on the variables on which it does not depend, regardless of the value of those variables:
+  \item Further, each flaw must be addressed with positive probability when we resample it.  More precisely, there is an upper bound $p^* < 1$ on the probability of any single flaw happening when we resample conditional on the variables on which it does not depend, regardless of the value of those variables:
     \seqn
       \label{eqn:feas-condprob-condition}
-      p^* = \inf_{A_i \in \mathcal{A}} \essinf_{x \in \Omega} P_{|\Nats \setminus \operatorname{vbl}(A_i)}(\bar{A_i} | \phi(x)[\Nats \setminus \operatorname{vbl}(A_i)]) .
+      p^* = \sup_{A_i \in \mathcal{A}} \esssup_{x \in \Omega} P_{|\Nats \setminus \operatorname{vbl}(A_i)}(A_i | \phi(x)[\Nats \setminus \operatorname{vbl}(A_i)]) .
     \eeqn
     $p^*$ is analogous to $p$ in the standard LLL.
   \item The dependency graph induced by our constraints meets a slightly-strengthened version of the usual LLL condition: $2^{C_0} p^* (d+1) < 1$, for some absolute constant $C_0$.  (If $C_0 = \log_2 e$ then this result specializes to the standard LLL.) \label{eqn:feas-lowdep-strong-condition}
@@ -763,11 +768,39 @@ Soon we will provide a proof that this algorithm finishes in expected polynomial
 
 \section{A non-ergodic Markov chain interpretation}
 \label{sec:markov}
+Our first step is to prove a general theorem about random walks.  Achlioptas and Iliopoulos discuss random walks that find perfect objects under two conditions:
+\begin{enumerate}
+  \item The random walk must be perfectly reconstructable given a perfect object and a tree-history of addressed flaws.
+  \item The random walk must end up in a $0$-entropy state, which we can think of as either a terminating state or a self-loop with probability $1$.  These states, and only these states, must be our desired perfect objects.
+\end{enumerate}
+In this section, we generalize this notion to \emph{highly-reconstructable} random walks that hit \emph{low-transition-entropy subgraphs}.  This is reminiscent of the fact that a random walk will quickly find a subgraph of small conductance.
 
+First, some setup and notation.  Fix a $\sigma$-algebra $(U, \Sigma)$.  A \emph{random walk graph} is a weighted digraph $G = (U, E, w)$ for which the edges leading out of each node define a probability distribution.  That is, $w(i, \cdot)$ is a probability measure on $U$ (perhaps supported only on a ``neighborhood'' of $i$) for all nodes $i$.  We define the edges and weights of a \emph{node-induced} random walk subgraph $G'$ of $G$ on nodes $U'$ as follows: $G'$ has nodes $U'$, edges $\{(i,j): (i,j) \in E; i, j \in U'\}$, and renormalized weights $w'(i, \cdot) = 1[i \in U'] 1_{U'} \frac{1}{w(i, U')} w(i, \cdot)$.  (We assume $w(i, U') > 0$ for all $i \in U'$.)
+%FIXME: Kinda sloppy.  Do we need to allow U' to have measure 0 sometimes?
+%FIXME: This repeats some of \ref{sec:perfect}.
 
+Fix a (possibly infinite) random walk graph $G = (U, E, w)$ and a node-induced subgraph $G' = (V, F, w')$.  We will define $V$ later.  Think of $V$ as the set of flawed states and $\bar{V} = U \setminus V$ as the set of flawless states.
+
+Let the stochastic process $\sigma(\mu, G) = (\sigma_0, \sigma_1, \cdots) \in U^\infty$ be the infinite Markov chain recording states of a random walk that starts by drawing $\sigma_0 \hasDist \mu$ and drawing $\sigma_{i+1} \hasDist w(\sigma_i, \cdot)$.  (When the graph and starting measure are clear we will just write $\sigma$.)  And let $\sigma^(t) = (\sigma_i)_{i=0}^{t}$ be the truncation of $\sigma$ to $t+1$ steps.  Let $h(i, J)$ be the expected hitting time from a starting node $i$ to a destination node set $J$, that is, $\E \inf \{t: \sigma_t \in J\}$ when $\mu = \delta_{\{i\}}(\cdot)$.  Let $h(\mu, I, J) = \esssup_{\mu, i \in I} h(i, J)$ be the expected hitting time from the ``furthest-away'' node in $I$, possibly up to sets of $\mu$-measure $0$ in $I$.  We will show several entropy-based conditions for bounding $h(\mu, V, \bar{V})$.
+
+We will choose $V$ to be the set of all ``high-transition-entropy'' nodes in $U$.  More precisely, $V = \{i \in U: \}$ %FIXME
+
+% WTS: H(Z) < 
+% H(Z): = H(\sigma_0) + \sum_{i=1}^{t} H(\sigma_i | \sigma_{i-1}).  That is, the entropy rate of Markov chain is just equal to the transition entropies.  So we should make an assumption that lower-bounds H(\sigma_i | \sigma_{i-1}) for all \sigma_{i-1}.
+% H(Y): = H(\sigma_t) + H(Y without \sigma_t | \sigma_t)
+% H(\sigma_t): We would like for the initial distribution \mu to have more entropy than the stationary distribution of the Markov chain, since I think that upper-bounds H(\sigma_t), and we would like H(\sigma_t) \leq H(\sigma_0) to avoid any term that depends on the entropy of \mu.  That is optional, though, since the entropy of \mu is going to be polynomial in any problem parameter.
+% H(Y without \sigma_t | \sigma_t): We assume Y is just the sequence of addressed flaws.  Then H(A | \sigma_t) = \sum_{i=t}^{1} H(A_i | A_{i+1}, \cdots, A_{t}, \sigma_t).  There is a polynomial-time algorithm to compute these quantities, but is there a simple closed-form upper bound?
+% H(Z | Y): 
+% H(Y | Z): 
 
 \section{Nonatomic algorithms}
 \label{sec:nonatomic}
+
+% \section{A new convex programming approach to the ```lopsided''' LLL?}
+% In this section, we note
+% Inductive hypothesis: In k-SAT, if the (lopsided) LLL is satisfied for a problem p with n variables, then there exists an assignment to one of the variables so that the reduced problem p' satisfies the LLL.  Stronger: For each variable, there exists an assignment to that variable so that the reduced problem p' satisfies the LLL.
+% n = 1: If the LLL is satisfied for a problem in 1 variable, there exists a satisfying solution to the problem, so we can assign the 1 variable that way.  A problem with no variables or clauses trivially satisfies the LLL.
+% n = k+1: Consider an assignment to an arbitrary variable i.  For each clause j not containing i, p_j' = p_j.  For each clause j containing i, either the clause is now satisfied and has disappeared, or else p_j' = 2*p_j (the clause wanted the other assignment to i and now has half as many remaining good assignments).  In the simple LLL, we have to show that the degree has dropped by a factor of 2 for at least one potential variable choice i.  
 
 % \section{Future work}
 % Our primary interest is in seeing whether we can find a general framework in which to apply the relative entropy compression argument.
