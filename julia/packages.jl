@@ -2,3 +2,4 @@
 
 Pkg.add("Distribution")
 Pkg.add("ArgParse")
+Pkg.add("Gadfly")

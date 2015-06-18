@@ -1,5 +1,5 @@
 using ArgParse
-using Utils, GeneratedData, Problems, Solvers
+using Utils, GeneratedData, Data, Problems, Solvers
 
 function compareGroundTruth(problem:: KsatProblem)
   println("Using exhaustive search to find a solution.")
@@ -7,7 +7,7 @@ function compareGroundTruth(problem:: KsatProblem)
   const trueSolution:: AnnotatedKsatSolution = solve(exhaustiveSolver, problem)
   if (isSuccessful(trueSolution))
     println("The problem has a solution: $(string(trueSolution))")
-    println("$(trueSolution.numSatisfyingSolutions)/$(trueSolution.numPotentialSolutions) ($(trueSolution.numSatisfyingSolutions/trueSolution.numPotentialSolutions)) satisfying solutions.")
+    println("($(trueSolution.numSatisfyingSolutions/trueSolution.numPotentialSolutions)) satisfying solutions.")
   else
     println("The problem has no solution.")
   end
@@ -37,18 +37,17 @@ end
 
 function run()
   const args = parseArgs()
-  srand(args["problem-seed"])
+  if args["problem-seed"] != nothing srand(args["problem-seed"]) end
   const problemGenerator = eval(parse(args["data-generator"]))
   const problem = generate(problemGenerator)
-  srand(args["solver-seed"])
+  if args["solver-seed"] != nothing srand(args["solver-seed"]) end
   const solver = eval(parse(args["solver"]))
   if args["compare-ground-truth"]
     compareGroundTruth(problem)
   end
   const solution = solve(solver, problem)
-  #println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution found for $(problem.k)-SAT problem with n=$(problem.numVariables), numClauses=$(length(problem.clauses))")
-  #println("Check: $(checkSuccess(solution.assignment, problem))")
-  #println("Solution: $(solution.assignment)")
+  println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution found for problem with n=$(problem.numVariables), numClauses=$(length(problem.clauses))")
+  println("Solution: $(solution.assignment)")
 end
 
 run()

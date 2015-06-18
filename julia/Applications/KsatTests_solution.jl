@@ -55,7 +55,7 @@ function run()
     const problem = generate(problemGenerator)
     #println("[Seed:$(i)] $(string(problem))")
 
-    const graph = makeKsatDependencyGraph(problem)
+    const graph = makeGraphWithCriterion(problem, SharedVariable)
     max = maxDegree(graph)
     println("[Seed:$(i)] $(max)")
     push!(sum_maxDegree,max)
@@ -85,7 +85,7 @@ function run()
 
   #const solution = solve(solver, problem)
   #println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution #found for $(problem.k)-SAT problem with n=$(problem.numVariables), numClauses=$(length(problem.clauses))")
-  #println("Check: $(checkSuccess(solution.assignment, problem))")
+  #println("Check: $(isSatisfied(problem, solution.assignment))")
   #println("Solution: $(solution.assignment)")
 end
 

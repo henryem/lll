@@ -3,7 +3,7 @@ export maximalIndependentSet, lubyIndependentSet
 using Distributions
 
 # Some algorithms for finding independent sets in undirected graphs.
-# Depends on KsatDependencyGraph.jl.
+# Depends on CspDependencyGraph.jl.
 # 
 # Some of the algorithms here could, in principle, be parallelized or 
 # distributed.  Currently we have not done that, but we have marked places that

@@ -1,9 +1,9 @@
-export ParallelLllKsatSolver, solve
+#DEPRECATED
 
+export ParallelLllKsatSolver, solve
 export IndependentSetFinder, MoserTardosIndependentSetFinder, SimpleChungIndependentSetFinder, WeakMisFinder, buildFinderFunc, calculateNumIterations
 
 using Problems
-
 using Distributions
 
 
@@ -37,40 +37,36 @@ function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
   # See Moser and Tardos 2010, algorithms 1 and 2.
   const n = problem.numVariables
   println("Problem: $(string(problem))")
-  assignment = uniformRandomAssignment(n)
-  annotatedProblem = annotateKsatProblem(problem, assignment)
+  assignment = uniformRandomBinaryAssignment(n)
+  annotatedProblem = annotateSatProblem(problem, assignment)
   #NOTE: Could be parallelized.
-  println("here")
-#  const graph = makeKsatDependencyGraph(problem)
-
-
-
-#  const maxNumIterations = calculateNumIterations(this.independentSetFinder, problem, graph)
-#  const independentSetFunc = buildFinderFunc(this.independentSetFinder, graph)
-#  println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses.")
-#  for i = 1:maxNumIterations
-#    #NOTE: Could be parallelized.
-#    const unsat = unsatisfiedClauses(annotatedProblem)
-#    if isempty(unsat)
-#      println("Found successful solution after $(i) iterations.")
-#      return toSuccessfulSolution(annotatedProblem)
-#    end
-#    const independentSet = independentSetFunc(inducedSubgraph(graph, unsat))
-    # println("Using an independent set of size $(length(independentSet)) on iteration $i")
-    #NOTE: Could be parallelized.  For example, if clauses were distributed
+ const graph = makeGraphWithCriterion(problem, SharedVariable)
+ const maxNumIterations = calculateNumIterations(this.independentSetFinder, problem, graph)
+ const independentSetFunc = buildFinderFunc(this.independentSetFinder, graph)
+ println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses.")
+ for i = 1:maxNumIterations
+   #NOTE: Could be parallelized.
+   const unsat = unsatisfiedClauses(annotatedProblem)
+   if isempty(unsat)
+     println("Found successful solution after $(i) iterations.")
+     return successfulSolution(annotatedProblem)
+   end
+   const independentSet = independentSetFunc(inducedSubgraph(graph, unsat))
+    println("Using an independent set of size $(length(independentSet)) on iteration $i")
+    # NOTE: Could be parallelized.  For example, if clauses were distributed
     # across machines and separate variable states maintained per machine, each
     # time a clause i's variables are updated, the updates should be
     # communicated to each machine holding a clause that neighbors i in the
     # graph.
-#    for clauseIdx in independentSet
-#      const clause = problem.clauses[clauseIdx]
-#      for variable in clause.variables
-#        annotatedProblem.currentAssignment[variable] = randbool()
-#      end
-#      registerUpdate!(annotatedProblem, clause.variables)
-#    end
-#  end
-#  unsuccessfulKsatSolution(n)
+   for clauseIdx in independentSet
+     const clause = problem.clauses[clauseIdx]
+     for variable in vbl(clause)
+       annotatedProblem.currentAssignment[variable] = randbool()
+     end
+     registerUpdate!(annotatedProblem, vbl(clause))
+   end
+ end
+ unsuccessfulKsatSolution(n)
 end
 
 

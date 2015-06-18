@@ -1,78 +1,76 @@
-export KsatProblem, numClauses, SatClause, KsatSolution, isSuccessful, unsuccessfulKsatSolution, KsatAssignment, isSatisfied, checkSuccess, uniformRandomAssignment
+export KsatProblem, k, constraints, numVars, marginalSample!, constraintProb
+export SatToKsatStrategy, SatToPaddedKsatStrategy, satToKsat
+export KsatSolution, isSuccessful, unsuccessfulKsatSolution
 
-# A disjunction of variables.
-immutable SatClause
-  variables:: AbstractVector{Int64}
-  signs:: AbstractVector{Bool}
-end
-
-function Base.string(this:: SatClause)
-  join(
-    map(1:length(this.variables)) do varIdx
-      const prefix = this.signs[varIdx] ? "" : "!"
-      "$(prefix)$(this.variables[varIdx])"
-    end,
-    "|")
-end
-
+#FIXME: Mostly copied from SatProblem.  Since Julia does not have inheritance
+# for concrete types, it's not straightforward to fix that.
 # A conjunction of disjunctive clauses (an AND of numVariables clauses, each
-# clause being an OR of k variables).
-immutable KsatProblem <: Problem
+# clause being an OR of k variables).  Each clause is of length exactly k.
+immutable KsatProblem <: ProductMeasureCsp{Binary, BinaryAssignment, SatClause}
   k:: Int64
   numVariables:: Int64
   clauses:: AbstractVector{SatClause}
 end
 
-const MAX_DISPLAYED_LITERALS = 20000000
-function Base.string(this:: KsatProblem)
-  const maxDisplayedClauses = int(MAX_DISPLAYED_LITERALS / this.k)
-  const numDisplayedClauses = min(maxDisplayedClauses, numClauses(this))
-  const clausesString = join(map(c -> "($(string(c)))", this.clauses[1:numDisplayedClauses]), "&")
-  "$(this.k)-SAT problem $(clausesString)$(numDisplayedClauses < numClauses(this) ? "..." : "")"
+function k(this:: KsatProblem)
+  this.k
 end
 
-function numClauses(this:: KsatProblem)
-  length(this.clauses)
+function constraints(this:: KsatProblem)
+  this.clauses
 end
 
+function numVars(this:: KsatProblem)
+  this.numVariables
+end
 
-typealias KsatAssignment AbstractVector{Bool}
-
-function isSatisfied(clause:: SatClause, assignment:: KsatAssignment)
-  # A clause is disjunctive -- an OR of variables.
-  for (variableIdx, variable) in enumerate(clause.variables)
-    const value = assignment[variable]
-    if clause.signs[variableIdx] == value
-      return true
-    end
+function marginalSample!(this:: KsatProblem, vbls:: AbstractVector{Int64}, assignment:: BinaryAssignment)
+  const newValues = randbool(length(vbls))
+  for (i, variableIdx) in enumerate(vbls)
+    assignment.vars[variableIdx] = newValues[i]
   end
-  return false
 end
 
-function checkSuccess(this:: KsatAssignment, p:: KsatProblem)
-  for clause in p.clauses
-    if !isSatisfied(clause, this)
-      return false
-    end
+# The marginal probability that constraint @constraintIdx is satisfied under
+# the measure on the variables of @this.
+function constraintProb(this:: KsatProblem, constraintIdx:: Int64)
+  2^(-k(this))
+end
+
+
+abstract SatToKsatStrategy
+
+function satToKsat(this:: SatProblem, strategy:: SatToKsatStrategy)
+  raiseAbstract("satToKsat", this)
+end
+
+
+# This strategy converts SAT instances to k-SAT instances by padding clauses
+# with variables that are later constrained to be false.  The resulting k-SAT
+# instance has k equal to the maximum clause length in the original problem,
+# and it uses an additional 2^k-1 clauses to constrain the dummy variables to
+# be false.
+immutable SatToPaddedKsatStrategy <: SatToKsatStrategy end
+
+function satToKsat(this:: SatProblem, strategy:: SatToPaddedKsatStrategy)
+  const maxK = maximum(map(k, constraints(this)))
+  const numDummyVariables = maxK
+  println("Padding SAT problem with $(numDummyVariables) dummy variables and $(2^numDummyVariables-1) clauses to form a $(maxK)-SAT problem.")
+  const dummyVariableStartIdx = numVars(this)+1
+  const paddedClauses = map(constraints(this)) do clause
+    const paddingSize = maxK - k(clause)
+    const paddedVars = vcat(vbl(clause), dummyVariableStartIdx:(dummyVariableStartIdx+paddingSize-1))
+    const paddedSigns = vcat(clause.signs, ones(Int64, paddingSize))
+    SatClause(paddedVars, paddedSigns)
   end
-  return true
+  # We add all of the 2^k possible constraints on the k dummy variables, except
+  # the constraint that one of them is true.  So the only valid solution has
+  # them all false.
+  const dummyVariables = dummyVariableStartIdx:(dummyVariableStartIdx+numDummyVariables-1)
+  const dummyConstraints = map(0:(2^numDummyVariables-2)) do dummyConstraintIdx
+    const signs = map(i -> (dummyConstraintIdx >> (i-1)) & 0x1, 1:numDummyVariables)
+    SatClause(dummyVariables, signs)
+  end
+  const allClauses = vcat(paddedClauses, dummyConstraints)
+  KsatProblem(maxK, numVars(this) + numDummyVariables, allClauses)
 end
-
-function uniformRandomAssignment(numVariables:: Int64)
-  randbool(numVariables)
-end
-
-
-immutable KsatSolution <: Solution
-  assignment:: KsatAssignment
-  isSuccessful:: Bool
-end
-
-function isSuccessful(this:: KsatSolution)
-  return this.isSuccessful
-end
-
-function unsuccessfulKsatSolution(numVariables:: Int64)
-  return KsatSolution(map(i -> false, 1:numVariables), false)
-end
-

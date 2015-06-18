@@ -2,11 +2,12 @@ module Solvers
 
 include("./Solvers.jl")
 include("./KsatUtils.jl")
-include("./KsatDependencyGraph.jl")
+include("./CspDependencyGraph.jl")
+include("./LllConditionChecker.jl")
 include("./IndependentSets.jl")
-include("./ExhaustiveKsatSolver.jl")
+include("./ExhaustiveBinarySolver.jl")
 include("./RandomWalkKsatSolver.jl")
-include("./SimpleMoserTardosKsatSolver.jl")
+include("./SimpleMoserTardosSolver.jl")
 include("./ParallelLllKsatSolver.jl")
 
 end

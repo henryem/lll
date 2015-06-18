@@ -33,14 +33,15 @@ immutable ParallelLllKsatSolver <: Solver{KsatProblem}
   independentSetFinder:: IndependentSetFinder
 end
 
+#FIXME
 function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
   # See Moser and Tardos 2010, algorithms 1 and 2.
-  const n = problem.numVariables
+  const n = numVars(problem)
   #println("Problem: $(string(problem))")
-  assignment = uniformRandomAssignment(n)
-  annotatedProblem = annotateKsatProblem(problem, assignment)
+  assignment = uniformRandomBinaryAssignment(n)
+  annotatedProblem = annotateSatProblem(problem, assignment)
   #NOTE: Could be parallelized.
-  const graph = makeKsatDependencyGraph(problem)
+  const graph = makeGraphWithCriterion(problem, SharedVariable)
   const maxNumIterations = calculateNumIterations(this.independentSetFinder, problem, graph)
   const independentSetFunc = buildFinderFunc(this.independentSetFinder, graph)
   #println("Using at most $(maxNumIterations) iterations for $(problem.k)-SAT problem with $(n) variables and $(numClauses(problem)) clauses.")
@@ -48,9 +49,8 @@ function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
     #NOTE: Could be parallelized.
     const unsat = unsatisfiedClauses(annotatedProblem)
     if isempty(unsat)
-      println("$(i)")
-      #println("Found successful solution after $(i) iterations.")
-      return toSuccessfulSolution(annotatedProblem)
+      println("Found successful solution after $(i) iterations.")
+      return successfulSolution(annotatedProblem)
     end
     const independentSet = independentSetFunc(inducedSubgraph(graph, unsat))
     # println("Using an independent set of size $(length(independentSet)) on iteration $i")
@@ -61,10 +61,10 @@ function solve(this:: ParallelLllKsatSolver, problem:: KsatProblem)
     # graph.
     for clauseIdx in independentSet
       const clause = problem.clauses[clauseIdx]
-      for variable in clause.variables
+      for variable in vbl(clause)
         annotatedProblem.currentAssignment[variable] = randbool()
       end
-      registerUpdate!(annotatedProblem, clause.variables)
+      registerUpdate!(annotatedProblem, vbl(clause))
     end
   end
   unsuccessfulKsatSolution(n)
