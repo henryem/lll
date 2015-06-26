@@ -1,8 +1,11 @@
 export BinaryAssignment, defaultAssignment, uniformRandomBinaryAssignment, emptyBinaryAssignment
 
 type BinaryAssignment <: VariableAssignment{Binary}
-  #FIXME: Maybe should use a concrete type here for performance.
-  vars:: AbstractVector{Bool}
+  vars:: BitVector
+end
+
+function BinaryAssignment(vars:: AbstractVector{Bool})
+  BinaryAssignment(bitpack(vars))
 end
 
 function defaultAssignment(numVariables:: Int64, :: Type{BinaryAssignment})

@@ -1,10 +1,11 @@
 using ArgParse
-using Utils, GeneratedData, Data, Problems, Solvers
+using Utils, GeneratedData, Data, Problems, Solvers, Optimizers
 
-function compareGroundTruth(problem:: KsatProblem)
+function compareGroundTruth(problem:: SatLikeProblem)
   println("Using exhaustive search to find a solution.")
-  const exhaustiveSolver = ExhaustiveKsatSolver()
-  const trueSolution:: AnnotatedKsatSolution = solve(exhaustiveSolver, problem)
+  const exhaustiveSolver = ExhaustiveBinarySolver()
+  const trueSolution = solve(exhaustiveSolver, problem)
+  #FIXME: Need to add annotations back into solutions.
   if (isSuccessful(trueSolution))
     println("The problem has a solution: $(string(trueSolution))")
     println("($(trueSolution.numSatisfyingSolutions/trueSolution.numPotentialSolutions)) satisfying solutions.")
@@ -46,7 +47,7 @@ function run()
     compareGroundTruth(problem)
   end
   const solution = solve(solver, problem)
-  println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution found for problem with n=$(problem.numVariables), numClauses=$(length(problem.clauses))")
+  println("$(isSuccessful(solution) ? "Successful" : "Unsuccessful") solution found for problem with n=$(numVars(problem)), numClauses=$(m(problem))")
   println("Solution: $(solution.assignment)")
 end
 

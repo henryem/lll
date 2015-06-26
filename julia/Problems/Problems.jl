@@ -135,7 +135,7 @@ end
 # A variable CSP equipped with a product measure on the variables.
 # A <: VariableAssignment{V}
 # C <: VariableConstraint{A, V}
-abstract ProductMeasureCsp{V <: VariableType, A <: VariableAssignment, C <: VariableConstraint} <: Csp{C, A}
+abstract ProductMeasureCsp{V <: VariableType, A <: VariableAssignment, C <: VariableConstraint} <: VariableCsp{V, A, C}
 
 # A <: VariableAssignment{V}
 # C <: VariableConstraint{A, V}
